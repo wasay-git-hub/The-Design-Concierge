@@ -1,0 +1,29 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.joblib
+budget_data.csv
+
+# Environment
+.env
+*.db
+
+# Node
+node_modules/
+.next/
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Reports & Uploads (generated at runtime)
+static/uploads/
+static/reports/
