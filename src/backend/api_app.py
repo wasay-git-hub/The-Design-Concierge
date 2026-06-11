@@ -8,11 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from src.fast_api.config import UPLOAD_DIR
-from src.fast_api.database import get_db, init_db, Lead
-from src.model_pipeline.model import predict_design_cost
-from src.fast_api.graphs.workflow import compiled_graph
-from src.fast_api.utils.pdf_generator import generate_intelligence_report
+from src.backend.config import UPLOAD_DIR
+from src.backend.database import get_db, init_db, Lead
+from src.backend.model_pipeline.model import predict_design_cost
+from src.backend.graphs.workflow import compiled_graph
+from src.backend.utils.pdf_generator import generate_intelligence_report
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

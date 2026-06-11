@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine, String, Integer, Float, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Mapped, mapped_column
-from src.fast_api.config import DATABASE_URL
+from src.backend.config import DATABASE_URL
 
 # Create database engine and session
 engine = create_engine(

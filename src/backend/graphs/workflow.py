@@ -3,7 +3,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
 import os
-from src.fast_api.graphs.nodes import (
+from src.backend.graphs.nodes import (
     node_welcome,
     node_vision_analysis,
     node_visual_taste_test,

@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import r2_score, mean_absolute_error
 
 # Path setup relative to the root directory
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 DATA_FILE = os.path.join(root_dir, "data", "budget_data.csv")
 MODEL_DIR = os.path.join(root_dir, "models")
 MODEL_FILE = os.path.join(MODEL_DIR, "budget_model.joblib")

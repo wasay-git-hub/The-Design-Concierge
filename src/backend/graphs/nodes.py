@@ -4,8 +4,8 @@ import base64
 import re
 from typing import Dict, Any, List
 from openai import OpenAI
-from src.fast_api.config import OPENAI_API_KEY
-from src.model_pipeline.model import predict_design_cost
+from src.backend.config import OPENAI_API_KEY
+from src.backend.model_pipeline.model import predict_design_cost
 
 def get_openai_client():
     if OPENAI_API_KEY:
