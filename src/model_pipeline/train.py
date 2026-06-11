@@ -9,9 +9,10 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import r2_score, mean_absolute_error
 
-# 1. Dataset Configuration
-DATA_FILE = "budget_data.csv"
-MODEL_DIR = os.path.join("backend", "app", "ml")
+# Path setup relative to the root directory
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+DATA_FILE = os.path.join(root_dir, "data", "budget_data.csv")
+MODEL_DIR = os.path.join(root_dir, "models")
 MODEL_FILE = os.path.join(MODEL_DIR, "budget_model.joblib")
 
 def generate_mock_luxury_data(num_samples=1200):
@@ -85,6 +86,7 @@ def generate_mock_luxury_data(num_samples=1200):
         })
         
     df = pd.DataFrame(data)
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     df.to_csv(DATA_FILE, index=False)
     print(f"Generated realistic mock luxury dataset: '{DATA_FILE}' ({num_samples} records).")
     return df

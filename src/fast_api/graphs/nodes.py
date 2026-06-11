@@ -1,10 +1,11 @@
 import os
 import json
 import base64
+import re
 from typing import Dict, Any, List
 from openai import OpenAI
-from backend.app.config import OPENAI_API_KEY
-from backend.app.ml.model import predict_design_cost
+from src.fast_api.config import OPENAI_API_KEY
+from src.model_pipeline.model import predict_design_cost
 
 def get_openai_client():
     if OPENAI_API_KEY:
@@ -23,15 +24,7 @@ def analyze_room_photo_with_gpt4o(image_path: str) -> Dict[str, Any]:
     """
     client = get_openai_client()
     if not client:
-        # Fallback simulated response representing a high-end luxury client uploaded image
-        return {
-            "architectural_bones": "High 11-foot ceilings, original plaster crown moldings, detailed fireplace mantel on the north wall, and double-hung sash windows. Layout is square and spacious.",
-            "lighting_profile": "Excellent south-facing natural lighting during the morning. However, artificial lighting is inadequate, relying only on a single traditional brass chandelier in the center, causing dark corners.",
-            "current_style": "Cluttered Traditional. Deep walnut-finished antique furniture, beige walls, heavy velvet drapes, and an oversized Persian rug.",
-            "estimated_dimensions": "Approximately 18ft x 16ft (288 sqft) with 11ft ceiling height.",
-            "potential_pain_points": "The furniture arrangement blocks natural pathways to the windows. The dark walnut furniture and heavy drapery absorb light, making the room feel heavy despite the natural sun.",
-            "mismatch_triggers": ["minimalist", "scandinavian", "modern", "industrial"]
-        }
+        raise ValueError("OpenAI API key is missing or invalid.")
 
     try:
         base64_image = encode_image(image_path)
@@ -73,18 +66,13 @@ def analyze_room_photo_with_gpt4o(image_path: str) -> Dict[str, Any]:
             temperature=0.2
         )
         
-        result = json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("OpenAI vision response content is empty.")
+        result = json.loads(content)
         return result
     except Exception as e:
-        print(f"GPT-4o Vision API call failed: {e}. Falling back to default profile.")
-        return {
-            "architectural_bones": "High ceilings, crown molding, fireplace on the main wall, sash windows.",
-            "lighting_profile": "South-facing windows provide bright natural light, but artificial lighting is poor.",
-            "current_style": "Traditional layout with classical heavy wood furniture.",
-            "estimated_dimensions": "Approx. 300 sqft with 10ft ceilings.",
-            "potential_pain_points": "Furniture layout obstructs window access; space feels heavy.",
-            "mismatch_triggers": ["minimalist", "modern", "industrial"]
-        }
+        raise RuntimeError(f"GPT-4o Vision API call failed: {e}")
 
 def node_welcome(state: Dict[str, Any]) -> Dict[str, Any]:
     """Phase 1: Welcome & Initial Greetings"""
@@ -93,8 +81,7 @@ def node_welcome(state: Dict[str, Any]) -> Dict[str, Any]:
     welcome_msg = (
         "Welcome to The Design Concierge. I am your Digital Junior Designer. "
         "Before we begin crafting your space's design dna, I would love to examine the room. "
-        "Please upload a photo of the current state of your room, and let me know your city "
-        "(Miami, Austin, or Scottsdale) and its general layout!"
+        "Please upload a photo of the current state of your room and tell me its general layout!"
     )
     
     if not chat_history:
@@ -120,7 +107,16 @@ def node_vision_analysis(state: Dict[str, Any]) -> Dict[str, Any]:
         
     # Analyze the photo
     print(f"Analyzing room image: '{image_path}'...")
-    vision_profile = analyze_room_photo_with_gpt4o(image_path)
+    try:
+        vision_profile = analyze_room_photo_with_gpt4o(image_path)
+    except Exception as e:
+        error_msg = f"I'm sorry, I encountered a technical error while analyzing the photo: {str(e)}"
+        chat_history.append({"role": "assistant", "content": error_msg})
+        return {
+            "chat_history": chat_history,
+            "next_node": "vision_analysis",
+            "current_question": "Please check the API configuration and try uploading again."
+        }
     
     response_msg = (
         f"Thank you for sharing your space. I've analyzed your photo, and here is what I see:\n\n"
@@ -136,8 +132,34 @@ def node_vision_analysis(state: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "vision_analysis": vision_profile,
         "chat_history": chat_history,
-        "next_node": "refinement",
+        "next_node": "visual_taste_test",
         "current_question": "What is your dream style or design vision for this room?",
+        "is_complete": False
+    }
+
+def node_visual_taste_test(state: Dict[str, Any]) -> Dict[str, Any]:
+    """Phase 2.5: Present visual taste test options to the user"""
+    chat_history = state.get("chat_history", [])
+    
+    visual_options = [
+        {"id": "organic_modern", "label": "Organic Modern", "url": "/static/styles/organic_modern.png"},
+        {"id": "scandinavian_minimalist", "label": "Scandinavian Minimalist", "url": "/static/styles/scandinavian_minimalist.png"},
+        {"id": "art_deco", "label": "Art Deco Luxury", "url": "/static/styles/art_deco.png"},
+        {"id": "industrial_chic", "label": "Industrial Chic", "url": "/static/styles/industrial_chic.png"}
+    ]
+    
+    response_msg = "To ensure I understand your aesthetic, please select the design style below that most closely aligns with your vision for the space:"
+    
+    chat_history.append({
+        "role": "assistant", 
+        "content": response_msg,
+        "visual_options": visual_options
+    })
+    
+    return {
+        "chat_history": chat_history,
+        "next_node": "refinement",
+        "current_question": "Please select a design style from the images provided.",
         "is_complete": False
     }
 
@@ -146,19 +168,29 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
     chat_history = state.get("chat_history", [])
     vision_analysis = state.get("vision_analysis", {})
     user_input = chat_history[-1]["content"] if chat_history and chat_history[-1]["role"] == "user" else ""
+    preferred_visual_style = state.get("preferred_visual_style", "")
+    
+    # Explicitly catch and store the visual taste test selection
+    if "I select the " in user_input and " style." in user_input:
+        match = re.search(r"I select the (.*) style\.", user_input)
+        if match:
+            preferred_visual_style = match.group(1)
     
     client = get_openai_client()
     
     # Check if we have collected enough design details
     # We want at least a target style, budget willingness, timeline, and decision-maker status.
     # We query an LLM to check if these criteria are met.
+    # The output JSON format contains is_sufficient, next_question, design_dna, timeline, etc.
+
     prompt = f"""
     You are a Senior Design Assistant. Review the conversation history and project details:
     Vision Profile: {json.dumps(vision_analysis)}
+    Preferred Visual Style: {preferred_visual_style if preferred_visual_style else 'None selected'}
     Conversation History: {json.dumps(chat_history[-6:])}
     
     We need to identify:
-    1. Client's target Design Style (e.g. Organic Modern, Japandi, Art Deco, etc.)
+    1. Client's target Design Style (e.g. Organic Modern, Japandi, Art Deco, etc.). Ensure it aligns with their Preferred Visual Style if one is selected.
     2. Estimated room size (area_sqft), scope of work (furnishing, soft remodel, gut renovation), and material tier (premium, luxury, ultra-luxury)
     3. Project Timeline (immediate, 3-6 months, flexible)
     4. Decision maker status (who is the final decision maker)
@@ -180,60 +212,13 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
     """
 
     if not client:
-        # Mock LLM response to simulate conversation progression
-        # Let's inspect the conversation to see what details we mock-fill
-        history_str = "".join([m["content"].lower() for m in chat_history])
-        
-        # Simple parser to transition steps mockingly
-        is_sufficient = False
-        next_question = "What is your budget comfort? We categorize project finishes as Premium, Luxury, or Ultra-Luxury. Which aligns with your aspirations?"
-        design_dna = "Organic Modern"
-        timeline = "3-6 months"
-        decision_maker = "Client & spouse"
-        area_sqft = 350
-        scope_level = 2
-        material_tier = 2
-        
-        if "premium" in history_str or "luxury" in history_str or "tier" in history_str or "budget" in history_str:
-            if "timeline" in history_str or "month" in history_str or "soon" in history_str:
-                if "partner" in history_str or "spouse" in history_str or "decision" in history_str or "i am" in history_str:
-                    is_sufficient = True
-                else:
-                    next_question = "Lastly, are there any other decision-makers involved in this project (like a partner or spouse), or will you be steering the ship solo?"
-            else:
-                next_question = "Lovely. When are you looking to start and complete this transformation? Do you have an immediate timeline, or are we planning for 3-6 months down the road?"
-        else:
-            # Check for conflict resolution
-            mismatch_found = any(trigger in user_input.lower() for trigger in vision_analysis.get("mismatch_triggers", []))
-            if mismatch_found:
-                next_question = (
-                    "I love the clean, minimalist look! However, since your room has heavy ornamental moldings and a darker "
-                    "natural exposure, standard white-walled minimalism might feel a bit stark. We can achieve a warm, sophisticated "
-                    "interpretation using light limewash walls, custom oak built-ins, and layered uplighting to accentuate those beautiful bones. "
-                    "Would you prefer that warm approach, or would you like to keep the walls strictly white?"
-                )
-            else:
-                next_question = "Understood. Tell me about your material aspirations: do you envision Premium custom items, Luxury finishes, or Ultra-Luxury bespoke elements?"
-        
-        if is_sufficient:
-            return {
-                "design_dna": design_dna,
-                "timeline": timeline,
-                "decision_maker": decision_maker,
-                "area_sqft": area_sqft,
-                "scope_level": scope_level,
-                "material_tier": material_tier,
-                "next_node": "synthesis",
-                "is_complete": True
-            }
-        else:
-            chat_history.append({"role": "assistant", "content": next_question})
-            return {
-                "chat_history": chat_history,
-                "next_node": "refinement",
-                "current_question": next_question,
-                "is_complete": False
-            }
+        error_msg = "I'm sorry, I encountered a technical error: OpenAI API key is missing or invalid."
+        chat_history.append({"role": "assistant", "content": error_msg})
+        return {
+            "chat_history": chat_history,
+            "next_node": "refinement",
+            "current_question": "Please check the API configuration and try again."
+        }
             
     try:
         response = client.chat.completions.create(
@@ -242,10 +227,14 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
-        res = json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("OpenAI refinement response content is empty.")
+        res = json.loads(content)
         
         if res.get("is_sufficient"):
             return {
+                "preferred_visual_style": preferred_visual_style,
                 "design_dna": res.get("design_dna", "Modern Luxury"),
                 "timeline": res.get("timeline", "Flexible"),
                 "decision_maker": res.get("decision_maker", "Owner"),
@@ -259,23 +248,20 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
             q = res.get("next_question", "Could you tell me more about your timeline and expectations?")
             chat_history.append({"role": "assistant", "content": q})
             return {
+                "preferred_visual_style": preferred_visual_style,
                 "chat_history": chat_history,
                 "next_node": "refinement",
                 "current_question": q,
                 "is_complete": False
             }
     except Exception as e:
-        print(f"LLM Refinement check error: {e}")
-        # Default fallback to complete the flow
+        error_msg = f"I'm sorry, I encountered a technical error while processing your response: {str(e)}"
+        chat_history.append({"role": "assistant", "content": error_msg})
         return {
-            "design_dna": "Transitional Classic",
-            "timeline": "3-6 months",
-            "decision_maker": "Self",
-            "area_sqft": 300,
-            "scope_level": 2,
-            "material_tier": 2,
-            "next_node": "synthesis",
-            "is_complete": True
+            "preferred_visual_style": preferred_visual_style,
+            "chat_history": chat_history,
+            "next_node": "refinement",
+            "current_question": "Please try again once the issue is resolved."
         }
 
 def node_synthesis(state: Dict[str, Any]) -> Dict[str, Any]:

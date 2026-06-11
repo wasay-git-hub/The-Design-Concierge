@@ -7,11 +7,12 @@ __pycache__/
 dist/
 build/
 *.joblib
-budget_data.csv
+models/*.joblib
 
-# Environment
-.env
+# Data & Database
+data/
 *.db
+.env
 
 # Node
 node_modules/
@@ -25,5 +26,5 @@ node_modules/
 Thumbs.db
 
 # Reports & Uploads (generated at runtime)
-static/uploads/
-static/reports/
+static/uploads/*
+static/reports/*

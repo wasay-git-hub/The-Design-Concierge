@@ -1,7 +1,7 @@
 import os
 import joblib
 import pandas as pd
-from backend.app.config import MODEL_PATH
+from src.fast_api.config import MODEL_PATH
 
 # Global model cache
 _model = None

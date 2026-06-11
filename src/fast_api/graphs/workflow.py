@@ -1,8 +1,12 @@
-from typing import TypedDict, List, Dict, Any, Union
+from typing import List, Dict, Any, Union, TypedDict
 from langgraph.graph import StateGraph, END
-from backend.app.graphs.nodes import (
+from langgraph.checkpoint.sqlite import SqliteSaver
+import sqlite3
+import os
+from src.fast_api.graphs.nodes import (
     node_welcome,
     node_vision_analysis,
+    node_visual_taste_test,
     node_refinement,
     node_synthesis
 )
@@ -36,6 +40,7 @@ class AgentState(TypedDict):
     vision_analysis: Dict[str, Any]
     
     # Refined Design preferences
+    preferred_visual_style: str
     design_dna: str
     
     # Conversation log state
@@ -59,11 +64,12 @@ def route_conversation(state: AgentState) -> str:
     return state.get("next_node", "welcome")
 
 # 3. Build Graph
-workflow = StateGraph(AgentState)
+workflow = StateGraph(AgentState)  # type: ignore
 
 # Add Nodes
 workflow.add_node("welcome", node_welcome)
 workflow.add_node("vision_analysis", node_vision_analysis)
+workflow.add_node("visual_taste_test", node_visual_taste_test)
 workflow.add_node("refinement", node_refinement)
 workflow.add_node("synthesis", node_synthesis)
 
@@ -85,6 +91,15 @@ workflow.add_conditional_edges(
     route_conversation,
     {
         "vision_analysis": "vision_analysis",
+        "visual_taste_test": "visual_taste_test"
+    }
+)
+
+workflow.add_conditional_edges(
+    "visual_taste_test",
+    route_conversation,
+    {
+        "visual_taste_test": "visual_taste_test",
         "refinement": "refinement"
     }
 )
@@ -102,6 +117,14 @@ workflow.add_conditional_edges(
 # Synthesis transitions to END
 workflow.add_edge("synthesis", END)
 
-# Compile Graph
-compiled_graph = workflow.compile()
-print("LangGraph Agentic Discovery Workflow successfully compiled.")
+# Compile Graph with Checkpointer and Breakpoints
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+db_path = os.path.join(root_dir, "data", "checkpoints.sqlite")
+conn = sqlite3.connect(db_path, check_same_thread=False)
+memory = SqliteSaver(conn)
+
+compiled_graph = workflow.compile(
+    checkpointer=memory,
+    interrupt_before=["vision_analysis", "refinement", "synthesis"]
+)
+print("LangGraph Agentic Discovery Workflow successfully compiled with production Checkpointer.")

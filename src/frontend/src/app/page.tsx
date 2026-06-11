@@ -11,6 +11,7 @@ const API_BASE = "http://localhost:8000";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  visual_options?: { id: string; label: string; url: string }[];
 }
 
 interface VisionAnalysis {
@@ -71,7 +72,7 @@ export default function Home() {
     setErrorMsg("");
 
     const formData = new FormData();
-    Object.entries(form).forEach(([key, val]) => formData.append(key, val));
+    Object.entries(form).forEach(([key, val]) => formData.append(key, val as string));
 
     try {
       const res = await fetch(`${API_BASE}/api/onboard`, {
@@ -137,9 +138,13 @@ export default function Home() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userInput.trim() || loading) return;
-
-    const userMessage = userInput.trim();
+    
+    const messageToSubmit = userInput.trim();
     setUserInput("");
+    await submitChatMessage(messageToSubmit);
+  };
+
+  const submitChatMessage = async (userMessage: string) => {
     setLoading(true);
     setErrorMsg("");
 
@@ -257,7 +262,7 @@ export default function Home() {
                         className="w-full px-4 py-2 border border-luxury-border rounded text-sm focus:outline-none focus:border-luxury-brass" 
                         placeholder="Elizabeth Vance"
                         value={form.name}
-                        onChange={(e) => setForm({...form, name: e.target.value})}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({...form, name: e.target.value})}
                       />
                     </div>
                     <div>
@@ -268,7 +273,7 @@ export default function Home() {
                         className="w-full px-4 py-2 border border-luxury-border rounded text-sm focus:outline-none focus:border-luxury-brass" 
                         placeholder="elizabeth@vance.com"
                         value={form.email}
-                        onChange={(e) => setForm({...form, email: e.target.value})}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({...form, email: e.target.value})}
                       />
                     </div>
                   </div>
@@ -282,7 +287,7 @@ export default function Home() {
                         className="w-full px-4 py-2 border border-luxury-border rounded text-sm focus:outline-none focus:border-luxury-brass" 
                         placeholder="(305) 555-0199"
                         value={form.phone}
-                        onChange={(e) => setForm({...form, phone: e.target.value})}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({...form, phone: e.target.value})}
                       />
                     </div>
                     <div>
@@ -290,7 +295,7 @@ export default function Home() {
                       <select 
                         className="w-full px-4 py-2 border border-luxury-border rounded text-sm bg-white focus:outline-none focus:border-luxury-brass"
                         value={form.location}
-                        onChange={(e) => setForm({...form, location: e.target.value})}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({...form, location: e.target.value})}
                       >
                         <option value="Miami">Miami, FL</option>
                         <option value="Austin">Austin, TX</option>
@@ -302,7 +307,7 @@ export default function Home() {
                       <select 
                         className="w-full px-4 py-2 border border-luxury-border rounded text-sm bg-white focus:outline-none focus:border-luxury-brass"
                         value={form.room_type}
-                        onChange={(e) => setForm({...form, room_type: e.target.value})}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({...form, room_type: e.target.value})}
                       >
                         <option value="Living Room">Living Room</option>
                         <option value="Kitchen">Kitchen</option>
@@ -447,7 +452,7 @@ export default function Home() {
 
                 {/* Chat Message Thread */}
                 <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[300px] mb-4 text-sm scroll-smooth">
-                  {chatHistory.map((msg, index) => (
+                  {chatHistory.map((msg: Message, index: number) => (
                     <div 
                       key={index}
                       className={`p-3 rounded-lg max-w-[85%] ${
@@ -457,6 +462,23 @@ export default function Home() {
                       }`}
                     >
                       <p className="leading-relaxed whitespace-pre-line text-xs">{msg.content}</p>
+                      
+                      {msg.visual_options && msg.visual_options.length > 0 && (
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                          {msg.visual_options.map((opt: { id: string; label: string; url: string }) => (
+                            <div 
+                              key={opt.id}
+                              onClick={() => submitChatMessage(`I select the ${opt.label} style.`)}
+                              className="group cursor-pointer rounded overflow-hidden border-2 border-transparent hover:border-luxury-brass transition relative"
+                            >
+                              <img src={`${API_BASE}${opt.url}`} alt={opt.label} className="w-full h-24 object-cover" />
+                              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-end p-2">
+                                <span className="text-white text-[10px] font-bold uppercase tracking-wider">{opt.label}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                   <div ref={chatEndRef} />
@@ -476,7 +498,7 @@ export default function Home() {
                     className="flex-1 px-4 py-2 border border-luxury-border rounded text-sm focus:outline-none focus:border-luxury-brass"
                     placeholder="Enter your design details..."
                     value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUserInput(e.target.value)}
                   />
                   <button 
                     type="submit"
