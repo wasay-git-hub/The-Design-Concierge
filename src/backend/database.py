@@ -28,8 +28,7 @@ class Lead(Base):
     material_tier: Mapped[int | None] = mapped_column(Integer, nullable=True)
     
     # Financial Estimates
-    budget_min: Mapped[float | None] = mapped_column(Float, nullable=True)
-    budget_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # (Budget fields removed in favor of Sourcing List)
     
     # Readiness Metrics
     readiness_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -39,8 +38,11 @@ class Lead(Base):
     # Multi-Modal Vision Analysis (JSON encoded string)
     vision_analysis: Mapped[str | None] = mapped_column(Text, nullable=True)
     
-    # Taste Profile
+    # Taste Profile & Generative Sourcing
+    style_answers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    selected_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     design_dna: Mapped[str | None] = mapped_column(String, nullable=True)
+    sourcing_list: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Lead Status & Outputs
     status: Mapped[str] = mapped_column(String, default="New")
@@ -58,13 +60,14 @@ class Lead(Base):
             "area_sqft": self.area_sqft,
             "scope_level": self.scope_level,
             "material_tier": self.material_tier,
-            "budget_min": self.budget_min,
-            "budget_max": self.budget_max,
             "readiness_score": self.readiness_score,
             "timeline": self.timeline,
             "decision_maker": self.decision_maker,
             "vision_analysis": json.loads(self.vision_analysis) if isinstance(self.vision_analysis, str) else None,
+            "style_answers": json.loads(self.style_answers) if isinstance(self.style_answers, str) else None,
+            "selected_image_url": self.selected_image_url,
             "design_dna": self.design_dna,
+            "sourcing_list": json.loads(self.sourcing_list) if isinstance(self.sourcing_list, str) else None,
             "status": self.status,
             "pdf_path": self.pdf_path,
             "created_at": self.created_at.isoformat() if self.created_at else None

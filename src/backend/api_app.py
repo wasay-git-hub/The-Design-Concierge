@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from src.backend.config import UPLOAD_DIR
 from src.backend.database import get_db, init_db, Lead
-from src.backend.model_pipeline.model import predict_design_cost
 from src.backend.graphs.workflow import compiled_graph
 from src.backend.utils.pdf_generator import generate_intelligence_report
 
@@ -172,9 +171,10 @@ def chat_refinement(
         lead.material_tier = state.get("material_tier")
         lead.timeline = state.get("timeline")
         lead.decision_maker = state.get("decision_maker")
-        lead.budget_min = state.get("budget_min")
-        lead.budget_max = state.get("budget_max")
         lead.readiness_score = state.get("readiness_score")
+        lead.style_answers = json.dumps(state.get("style_answers", {}))
+        lead.selected_image_url = state.get("selected_image_url")
+        lead.sourcing_list = json.dumps(state.get("sourcing_list", []))
         lead.status = "Assessed"
         
     db.commit()
@@ -186,9 +186,8 @@ def chat_refinement(
         "is_complete": state.get("is_complete", False),
         "lead_summary": {
             "design_dna": lead.design_dna,
-            "budget_min": lead.budget_min,
-            "budget_max": lead.budget_max,
-            "readiness_score": lead.readiness_score
+            "readiness_score": lead.readiness_score,
+            "sourcing_list": state.get("sourcing_list", [])
         } if state.get("is_complete") else None
     }
 

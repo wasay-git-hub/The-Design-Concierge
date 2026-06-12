@@ -253,8 +253,6 @@ def generate_intelligence_report(lead_data: dict, output_dir: str = "static/repo
     # ------------------ SECTION 3: DESIGN ASSESSMENT & ALIGNMENT ------------------
     story.append(Paragraph("Financial & Administrative Briefing", h1_style))
     
-    min_b = lead_data.get("budget_min", 0)
-    max_b = lead_data.get("budget_max", 0)
     area = lead_data.get("area_sqft", 0)
     scope = {1: "Furnishing & Styling Only", 2: "Soft Renovation (Cosmetic)", 3: "Full Gut Remodel & Build"}.get(lead_data.get("scope_level", 2), "Remodel")
     material = {1: "Premium (High Street / Retail)", 2: "Luxury (Custom Millwork & Finishes)", 3: "Ultra-Luxury (Bespoke & Import Masterpieces)"}.get(lead_data.get("material_tier", 2), "Luxury")
@@ -263,7 +261,6 @@ def generate_intelligence_report(lead_data: dict, output_dir: str = "static/repo
         [Paragraph("<b>Estimated Square Footage</b>", meta_label_style), Paragraph(f"{area} sq ft", meta_val_style)],
         [Paragraph("<b>Scope of Renovation</b>", meta_label_style), Paragraph(scope, meta_val_style)],
         [Paragraph("<b>Material Tier</b>", meta_label_style), Paragraph(material, meta_val_style)],
-        [Paragraph("<b>ML Predicted Cost Range</b>", meta_label_style), Paragraph(f"<b>${min_b:,.2f} - ${max_b:,.2f}</b>", meta_val_style)],
         [Paragraph("<b>Timeline Expectations</b>", meta_label_style), Paragraph(lead_data.get("timeline") or "Unspecified", meta_val_style)],
         [Paragraph("<b>Decision-Maker Involvement</b>", meta_label_style), Paragraph(lead_data.get("decision_maker") or "Unspecified", meta_val_style)]
     ]
@@ -278,10 +275,21 @@ def generate_intelligence_report(lead_data: dict, output_dir: str = "static/repo
     
     story.append(Spacer(1, 20))
     
+    # Material Sourcing Board
+    story.append(Paragraph("Material Sourcing & Procurement Board", h2_style))
+    sourcing_list = lead_data.get("sourcing_list", [])
+    if sourcing_list:
+        for item in sourcing_list:
+            story.append(Paragraph(f"• {item}", bullet_style))
+    else:
+        story.append(Paragraph("• No specific materials sourced.", bullet_style))
+        
+    story.append(Spacer(1, 20))
+    
     # Designer Consultation Agenda
     story.append(Paragraph("Recommended Lead Handoff Agenda", h2_style))
     story.append(Paragraph("• <b>Discuss Room Bones:</b> Open the meeting by acknowledging the architectural highlights (e.g. fireplace, crown molding) to establish instant creative alignment.", bullet_style))
-    story.append(Paragraph("• <b>Validate Budget Predictability:</b> Mention that the initial ML model estimated a project cost between $" + f"{min_b:,.0f} and ${max_b:,.0f}" + " for a " + scope.lower() + " and confirm if they wish to adjust scale.", bullet_style))
+    story.append(Paragraph("• <b>Present Material Board:</b> Walk the client through the AI-generated Material Sourcing Board to gauge their reaction to the textures and colors.", bullet_style))
     story.append(Paragraph("• <b>Address Design Friction:</b> Address any style mismatch (e.g. lighting limits vs. selected design styles) by pitching alternative luxury textures (such as warm limewash plaster over bare drywall).", bullet_style))
     story.append(Paragraph("• <b>Confirm Readiness Details:</b> Finalize decisions with " + (lead_data.get("decision_maker") or "both partners") + " to lock down the engagement details.", bullet_style))
     

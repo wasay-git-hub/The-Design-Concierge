@@ -28,3 +28,10 @@ Thumbs.db
 # Reports & Uploads (generated at runtime)
 static/uploads/*
 static/reports/*
+
+# Ignore Kaggle Datasets
+static/bathroom/
+static/bedroom/
+static/kitchen/
+static/living_room/
+static/metadata.csv

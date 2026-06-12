@@ -2,10 +2,11 @@ import os
 import json
 import base64
 import re
+import random
+import pandas as pd
 from typing import Dict, Any, List
 from openai import OpenAI
 from src.backend.config import OPENAI_API_KEY
-from src.backend.model_pipeline.model import predict_design_cost
 
 def get_openai_client():
     if OPENAI_API_KEY:
@@ -46,7 +47,7 @@ def analyze_room_photo_with_gpt4o(image_path: str) -> Dict[str, Any]:
         """
 
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.4-mini",
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -123,8 +124,7 @@ def node_vision_analysis(state: Dict[str, Any]) -> Dict[str, Any]:
         f"🏛️ **Architectural Bones:** {vision_profile['architectural_bones']}\n\n"
         f"☀️ **Lighting Profile:** {vision_profile['lighting_profile']}\n\n"
         f"🎨 **Current Aesthetic:** {vision_profile['current_style']}\n\n"
-        f"I've got the structural constraints logged. Now, tell me: what is your dream style or vision for this room? "
-        "Are there any specific materials or must-haves you are imagining?"
+        f"I've got the structural constraints logged. Now, let's nail down your specific taste."
     )
     
     chat_history.append({"role": "assistant", "content": response_msg})
@@ -132,23 +132,147 @@ def node_vision_analysis(state: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "vision_analysis": vision_profile,
         "chat_history": chat_history,
-        "next_node": "visual_taste_test",
-        "current_question": "What is your dream style or design vision for this room?",
+        "next_node": "style_questionnaire",
+        "current_question": "Let's begin the taste discovery.",
         "is_complete": False
     }
 
-def node_visual_taste_test(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Phase 2.5: Present visual taste test options to the user"""
+def node_style_questionnaire(state: Dict[str, Any]) -> Dict[str, Any]:
+    """Phase 2.5: Ask 4 style questions to build the dynamic query profile"""
     chat_history = state.get("chat_history", [])
-    
-    visual_options = [
-        {"id": "organic_modern", "label": "Organic Modern", "url": "/static/styles/organic_modern.png"},
-        {"id": "scandinavian_minimalist", "label": "Scandinavian Minimalist", "url": "/static/styles/scandinavian_minimalist.png"},
-        {"id": "art_deco", "label": "Art Deco Luxury", "url": "/static/styles/art_deco.png"},
-        {"id": "industrial_chic", "label": "Industrial Chic", "url": "/static/styles/industrial_chic.png"}
+    style_answers = state.get("style_answers", {})
+    if not style_answers:
+        style_answers = {}
+        
+    QUESTIONS = [
+        {"key": "atmosphere", "q": "Do you lean toward light, airy, and bright spaces, or dark, moody, and cozy environments?"},
+        {"key": "lighting", "q": "When you imagine the lighting, do you prefer crisp white daylight, or warm, golden, amber glows?"},
+        {"key": "texture", "q": "Do you prefer sleek, polished, and modern surfaces (glass, metal, marble), or raw, organic, and textured elements (raw wood, linen, stone)?"},
+        {"key": "energy", "q": "Should the room feel perfectly minimalist and uncluttered, or layered, collected, and full of character?"}
     ]
     
-    response_msg = "To ensure I understand your aesthetic, please select the design style below that most closely aligns with your vision for the space:"
+    client = get_openai_client()
+    
+    # Process the last user message to extract answer if available
+    if len(chat_history) > 0 and chat_history[-1]["role"] == "user" and len(style_answers) < len(QUESTIONS):
+        # We need to determine which question they answered. It's usually the first one that is missing.
+        missing_keys = [item["key"] for item in QUESTIONS if item["key"] not in style_answers]
+        current_q_key = missing_keys[0] if missing_keys else None
+        
+        if current_q_key and client:
+            try:
+                prompt = f"The user replied to a design question. Extract their preference.\nUser's message: '{chat_history[-1]['content']}'\nReturn ONLY a JSON object: {{\"{current_q_key}\": \"extracted summary of their preference\"}}"
+                res = client.chat.completions.create(
+                    model="gpt-5.4-mini",
+                    response_format={"type": "json_object"},
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1
+                )
+                extracted = json.loads(res.choices[0].message.content or "{}")
+                if current_q_key in extracted:
+                    style_answers[current_q_key] = extracted[current_q_key]
+            except Exception:
+                pass # Fail silently and just move on or retry
+
+    # Find the next unanswered question
+    next_q = None
+    for item in QUESTIONS:
+        if item["key"] not in style_answers:
+            next_q = item["q"]
+            break
+            
+    if next_q:
+        chat_history.append({"role": "assistant", "content": next_q})
+        return {
+            "style_answers": style_answers,
+            "chat_history": chat_history,
+            "next_node": "style_questionnaire",
+            "current_question": next_q,
+            "is_complete": False
+        }
+    else:
+        # All questions answered, transition to dynamic visuals
+        return {
+            "style_answers": style_answers,
+            "next_node": "dynamic_visuals",
+            "is_complete": False
+        }
+
+def node_dynamic_visuals(state: Dict[str, Any]) -> Dict[str, Any]:
+    """Phase 3: Retrieve matching images based on style answers from the Kaggle dataset"""
+    chat_history = state.get("chat_history", [])
+    style_answers = state.get("style_answers", {})
+    room_type = state.get("room_type", "living_room").lower().replace(" ", "_")
+    
+    # Fallback default
+    mapped_style = "modern"
+    
+    client = get_openai_client()
+    if client and style_answers:
+        try:
+            prompt = (
+                f"The user provided these style preferences: {json.dumps(style_answers)}\n"
+                f"Which of the following 5 design styles is the closest match?\n"
+                f"[boho, industrial, minimalist, modern, scandinavian]\n"
+                f"Return ONLY a JSON object: {{\"style\": \"<style>\"}}"
+            )
+            res = client.chat.completions.create(
+                model="gpt-5.4-mini",
+                response_format={"type": "json_object"},
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1
+            )
+            extracted = json.loads(res.choices[0].message.content or "{}")
+            if extracted.get("style") in ["boho", "industrial", "minimalist", "modern", "scandinavian"]:
+                mapped_style = extracted["style"]
+        except Exception:
+            pass
+
+    # Read the dataset metadata
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    metadata_path = os.path.join(root_dir, "static", "metadata.csv")
+    
+    visual_options = []
+    
+    if os.path.exists(metadata_path):
+        try:
+            df = pd.read_csv(metadata_path)
+            # Normalize dataset columns just in case
+            df.columns = df.columns.str.strip().str.lower()
+            
+            # Filter by room type and mapped style
+            matched = df[(df['room_type'] == room_type) & (df['style'] == mapped_style)]
+            
+            # If no perfect match for room type, fallback to just style matching
+            if matched.empty:
+                matched = df[df['style'] == mapped_style]
+                
+            if not matched.empty:
+                # Pick up to 3 random images
+                sample_size = min(3, len(matched))
+                sampled = matched.sample(n=sample_size)
+                
+                for i, (_, row) in enumerate(sampled.iterrows()):
+                    # The image_path in CSV likely points to "living_room/industrial/img.jpg"
+                    # Our static mount is at /static, so the URL should be /static/<image_path>
+                    img_path = row['image_path'].replace('\\', '/')
+                    visual_options.append({
+                        "id": f"option_{i+1}",
+                        "label": f"Concept {i+1}",
+                        "url": f"/static/{img_path}"
+                    })
+        except Exception as e:
+            print(f"Dataset reading error: {e}")
+            
+    # Fallback if dataset reading failed or didn't find anything
+    if not visual_options:
+        visual_options = [
+            {"id": "generated_option_1", "label": "Concept 1", "url": "/static/styles/organic_modern.png"},
+            {"id": "generated_option_2", "label": "Concept 2", "url": "/static/styles/scandinavian_minimalist.png"},
+            {"id": "generated_option_3", "label": "Concept 3", "url": "/static/styles/industrial_chic.png"}
+        ]
+    
+    response_msg = f"Based on your preferences, I determined your overarching style leans towards **{mapped_style.title()}**. I have pulled 3 matching design concepts from our catalog for your {room_type.replace('_', ' ')}. Please select the one that resonates most with your vision:"
     
     chat_history.append({
         "role": "assistant", 
@@ -169,12 +293,18 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
     vision_analysis = state.get("vision_analysis", {})
     user_input = chat_history[-1]["content"] if chat_history and chat_history[-1]["role"] == "user" else ""
     preferred_visual_style = state.get("preferred_visual_style", "")
+    selected_image_url = state.get("selected_image_url", "")
     
-    # Explicitly catch and store the visual taste test selection
+    # Explicitly catch and store the dynamic visual test selection
     if "I select the " in user_input and " style." in user_input:
         match = re.search(r"I select the (.*) style\.", user_input)
         if match:
             preferred_visual_style = match.group(1)
+            # Find the URL from the previous visual options to store it
+            if len(chat_history) >= 2 and "visual_options" in chat_history[-2]:
+                for opt in chat_history[-2]["visual_options"]:
+                    if opt["label"] == preferred_visual_style:
+                        selected_image_url = opt["url"]
     
     client = get_openai_client()
     
@@ -222,7 +352,7 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
             
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.4-mini",
             response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
@@ -235,6 +365,7 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
         if res.get("is_sufficient"):
             return {
                 "preferred_visual_style": preferred_visual_style,
+                "selected_image_url": selected_image_url,
                 "design_dna": res.get("design_dna", "Modern Luxury"),
                 "timeline": res.get("timeline", "Flexible"),
                 "decision_maker": res.get("decision_maker", "Owner"),
@@ -249,6 +380,7 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
             chat_history.append({"role": "assistant", "content": q})
             return {
                 "preferred_visual_style": preferred_visual_style,
+                "selected_image_url": selected_image_url,
                 "chat_history": chat_history,
                 "next_node": "refinement",
                 "current_question": q,
@@ -259,30 +391,15 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
         chat_history.append({"role": "assistant", "content": error_msg})
         return {
             "preferred_visual_style": preferred_visual_style,
+            "selected_image_url": selected_image_url,
             "chat_history": chat_history,
             "next_node": "refinement",
             "current_question": "Please try again once the issue is resolved."
         }
 
 def node_synthesis(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Phase 4: Synthesis, budget estimation, readiness scoring"""
-    # 1. Run ML Budget Prediction
-    location = state.get("location", "Austin")
-    room_type = state.get("room_type", "Living Room")
-    area_sqft = state.get("area_sqft", 300)
-    scope_level = state.get("scope_level", 2)
-    material_tier = state.get("material_tier", 2)
-    
-    # ML Prediction range
-    budget_min, budget_max = predict_design_cost(
-        location=location,
-        room_type=room_type,
-        area_sqft=area_sqft,
-        scope_level=scope_level,
-        material_tier=material_tier
-    )
-    
-    # 2. Compute Readiness Score (0-100)
+    """Phase 4: Synthesis, generative sourcing list, readiness scoring"""
+    # 1. Compute Readiness Score (0-100)
     # Timeline score: immediate (20), 3-6 months (20), flexible (15), rush (5)
     timeline_str = state.get("timeline", "3-6 months").lower()
     t_score = 20
@@ -304,20 +421,37 @@ def node_synthesis(state: Dict[str, Any]) -> Dict[str, Any]:
     # Scope Clarity: room dimensions & vision available (20)
     scope_score = 20 if state.get("vision_analysis") else 10
     
-    # Budget Comfort: If they complete onboarding, we award budget points (40)
-    # We will adjust this if they indicate budget alignment in final report view
+    # Design Sourcing available (40 points)
     b_score = 40 
     
     readiness_score = t_score + dm_score + scope_score + b_score
     
+    # 2. LLM Generates Material & Furniture Sourcing List
+    client = get_openai_client()
+    sourcing_list = []
+    design_dna = state.get("design_dna", "Custom Classic")
+    
+    if client:
+        try:
+            prompt = f"Based on the design DNA '{design_dna}', recommend exactly 5 highly specific material, texture, or statement furniture items that a designer should source. Example output array: ['Benjamin Moore Swiss Coffee Paint', 'Unlacquered Brass Faucets', 'Curved Bouclé Accent Chair']. Return JSON format: {{\"sourcing_list\": [\"item 1\", \"item 2\", \"item 3\", \"item 4\", \"item 5\"]}}"
+            res = client.chat.completions.create(
+                model="gpt-5.4-mini",
+                response_format={"type": "json_object"},
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
+            )
+            extracted = json.loads(res.choices[0].message.content or "{}")
+            sourcing_list = extracted.get("sourcing_list", [])
+        except Exception:
+            sourcing_list = ["Error generating sourcing list"]
+            
     summary_msg = (
         f"Thank you for completing the Taste Discovery process. "
         f"I have compiled your Project Design Brief.\n\n"
-        f"📊 **Design DNA:** {state.get('design_dna', 'Custom Classic')}\n"
-        f"📏 **Estimated Space Area:** {area_sqft} sq ft\n"
-        f"💵 **ML Estimated Budget Range:** ${budget_min:,.2f} - ${budget_max:,.2f}\n"
+        f"📊 **Design DNA:** {design_dna}\n"
+        f"📏 **Estimated Space Area:** {state.get('area_sqft', 300)} sq ft\n"
         f"📋 **Project Readiness Score:** {readiness_score}/100\n\n"
-        f"I am compiling this information into a Project Intelligence Report for your Architect/Designer. "
+        f"I am compiling this information into a Project Intelligence Report for your Architect/Designer, which now includes a customized Material Sourcing Board. "
         f"They will reach out to schedule your 1-on-1 design consultation."
     )
     
@@ -325,9 +459,8 @@ def node_synthesis(state: Dict[str, Any]) -> Dict[str, Any]:
     chat_history.append({"role": "assistant", "content": summary_msg})
     
     return {
-        "budget_min": budget_min,
-        "budget_max": budget_max,
         "readiness_score": readiness_score,
+        "sourcing_list": sourcing_list,
         "chat_history": chat_history,
         "is_complete": True,
         "next_node": "END"

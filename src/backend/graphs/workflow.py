@@ -27,8 +27,7 @@ class AgentState(TypedDict):
     material_tier: int
     
     # Financial Estimates
-    budget_min: float
-    budget_max: float
+    # Budget fields removed
     
     # Readiness Metrics
     readiness_score: int
@@ -39,9 +38,12 @@ class AgentState(TypedDict):
     room_photo_url: str
     vision_analysis: Dict[str, Any]
     
-    # Refined Design preferences
+    # Taste Profile & Generative Sourcing
+    style_answers: Dict[str, str]
+    selected_image_url: str
     preferred_visual_style: str
     design_dna: str
+    sourcing_list: List[str]
     
     # Conversation log state
     chat_history: List[Dict[str, str]]
@@ -69,7 +71,8 @@ workflow = StateGraph(AgentState)  # type: ignore
 # Add Nodes
 workflow.add_node("welcome", node_welcome)
 workflow.add_node("vision_analysis", node_vision_analysis)
-workflow.add_node("visual_taste_test", node_visual_taste_test)
+workflow.add_node("style_questionnaire", node_style_questionnaire)
+workflow.add_node("dynamic_visuals", node_dynamic_visuals)
 workflow.add_node("refinement", node_refinement)
 workflow.add_node("synthesis", node_synthesis)
 
@@ -91,15 +94,25 @@ workflow.add_conditional_edges(
     route_conversation,
     {
         "vision_analysis": "vision_analysis",
-        "visual_taste_test": "visual_taste_test"
+        "style_questionnaire": "style_questionnaire"
+    }
+)
+
+# Style Questionnaire loops on itself until questions are answered, then moves to dynamic_visuals
+workflow.add_conditional_edges(
+    "style_questionnaire",
+    route_conversation,
+    {
+        "style_questionnaire": "style_questionnaire",
+        "dynamic_visuals": "dynamic_visuals"
     }
 )
 
 workflow.add_conditional_edges(
-    "visual_taste_test",
+    "dynamic_visuals",
     route_conversation,
     {
-        "visual_taste_test": "visual_taste_test",
+        "dynamic_visuals": "dynamic_visuals",
         "refinement": "refinement"
     }
 )
@@ -125,6 +138,6 @@ memory = SqliteSaver(conn)
 
 compiled_graph = workflow.compile(
     checkpointer=memory,
-    interrupt_before=["vision_analysis", "refinement", "synthesis"]
+    interrupt_before=["vision_analysis", "style_questionnaire", "dynamic_visuals", "refinement", "synthesis"]
 )
 print("LangGraph Agentic Discovery Workflow successfully compiled with production Checkpointer.")
