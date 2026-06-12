@@ -111,7 +111,8 @@ def node_vision_analysis(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         vision_profile = analyze_room_photo_with_gpt4o(image_path)
     except Exception as e:
-        error_msg = f"I'm sorry, I encountered a technical error while analyzing the photo: {str(e)}"
+        print(f"Vision API Error: {e}")
+        error_msg = "Our design servers are currently experiencing high traffic. Please try uploading the photo again."
         chat_history.append({"role": "assistant", "content": error_msg})
         return {
             "chat_history": chat_history,
@@ -342,7 +343,7 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
     """
 
     if not client:
-        error_msg = "I'm sorry, I encountered a technical error: OpenAI API key is missing or invalid."
+        error_msg = "Our AI design servers are currently unconfigured. Please ensure the system's API key is properly set up."
         chat_history.append({"role": "assistant", "content": error_msg})
         return {
             "chat_history": chat_history,
@@ -387,7 +388,8 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
                 "is_complete": False
             }
     except Exception as e:
-        error_msg = f"I'm sorry, I encountered a technical error while processing your response: {str(e)}"
+        print(f"Refinement API Error: {e}")
+        error_msg = "Our design assistants are experiencing high volume right now. Could you please try sending your message again?"
         chat_history.append({"role": "assistant", "content": error_msg})
         return {
             "preferred_visual_style": preferred_visual_style,
