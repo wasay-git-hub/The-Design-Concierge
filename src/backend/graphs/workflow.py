@@ -6,7 +6,8 @@ import os
 from src.backend.graphs.nodes import (
     node_welcome,
     node_vision_analysis,
-    node_visual_taste_test,
+    node_style_questionnaire,
+    node_dynamic_visuals,
     node_refinement,
     node_synthesis
 )

@@ -241,7 +241,7 @@ export default function Home() {
                   Welcome to The Design Concierge
                 </h1>
                 <p className="text-sm text-luxury-charcoal/70 mb-8 leading-relaxed">
-                  We are not a support chatbot. We represent a Digital Junior Designer program designed
+                  We represent a Digital Junior Designer program designed
                   to assess your architectural layouts and establish your client briefing profile 
                   prior to your structural interior designer consultation.
                 </p>
@@ -313,8 +313,6 @@ export default function Home() {
                         <option value="Kitchen">Kitchen</option>
                         <option value="Master Bedroom">Master Bedroom</option>
                         <option value="Bathroom">Bathroom</option>
-                        <option value="Dining Room">Dining Room</option>
-                        <option value="Foyer">Foyer</option>
                       </select>
                     </div>
                   </div>
