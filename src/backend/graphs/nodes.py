@@ -63,7 +63,7 @@ def analyze_room_photo_with_gpt4o(image_path: str) -> Dict[str, Any]:
                     ]
                 }
             ],
-            max_tokens=1000,
+            max_completion_tokens=1000,
             temperature=0.2
         )
         
@@ -162,7 +162,7 @@ def node_style_questionnaire(state: Dict[str, Any]) -> Dict[str, Any]:
         
         if current_q_key and client:
             try:
-                prompt = f"The user replied to a design question. Extract their preference.\nUser's message: '{chat_history[-1]['content']}'\nReturn ONLY a JSON object: {{\"{current_q_key}\": \"extracted summary of their preference\"}}"
+                prompt = f"The user replied to a design question. Extract their preference.\nUser's message: '{chat_history[-1]['content']}'\nReturn ONLY a JSON object: {{\"{current_q_key}\": \"extracted summary of their preference\"}}. If the user's message is completely irrelevant to the question, return ONLY a JSON object: {{\"{current_q_key}\": \"irrelevant\"}}."
                 res = client.chat.completions.create(
                     model="gpt-5.4-mini",
                     response_format={"type": "json_object"},
@@ -171,7 +171,17 @@ def node_style_questionnaire(state: Dict[str, Any]) -> Dict[str, Any]:
                 )
                 extracted = json.loads(res.choices[0].message.content or "{}")
                 if current_q_key in extracted:
-                    style_answers[current_q_key] = extracted[current_q_key]
+                    extracted_val = extracted[current_q_key]
+                    if str(extracted_val).strip().lower() == "irrelevant":
+                        chat_history.append({"role": "assistant", "content": "I'm sorry, I didn't quite catch that. Could you please answer the design question so I can understand your taste?"})
+                        return {
+                            "chat_history": chat_history,
+                            "next_node": "style_questionnaire",
+                            "current_question": next((item["q"] for item in QUESTIONS if item["key"] == current_q_key), "Please try again."),
+                            "is_complete": False
+                        }
+                    else:
+                        style_answers[current_q_key] = extracted_val
             except Exception:
                 pass # Fail silently and just move on or retry
 
@@ -183,12 +193,18 @@ def node_style_questionnaire(state: Dict[str, Any]) -> Dict[str, Any]:
             break
             
     if next_q:
-        chat_history.append({"role": "assistant", "content": next_q})
+        # Prepend the intro message if this is the very first question
+        if len(style_answers) == 0:
+            next_q_display = f"I will ask 3-4 questions now so I can get an idea of your taste.\n\n{next_q}"
+        else:
+            next_q_display = next_q
+            
+        chat_history.append({"role": "assistant", "content": next_q_display})
         return {
             "style_answers": style_answers,
             "chat_history": chat_history,
             "next_node": "style_questionnaire",
-            "current_question": next_q,
+            "current_question": next_q_display,
             "is_complete": False
         }
     else:
@@ -254,9 +270,12 @@ def node_dynamic_visuals(state: Dict[str, Any]) -> Dict[str, Any]:
                 sampled = matched.sample(n=sample_size)
                 
                 for i, (_, row) in enumerate(sampled.iterrows()):
-                    # The image_path in CSV likely points to "living_room/industrial/img.jpg"
-                    # Our static mount is at /static, so the URL should be /static/<image_path>
-                    img_path = row['image_path'].replace('\\', '/')
+                    img_path = row['image_path']
+                    if 'raw\\' in img_path:
+                        img_path = img_path.split('raw\\')[-1]
+                    elif 'raw/' in img_path:
+                        img_path = img_path.split('raw/')[-1]
+                    img_path = img_path.replace('\\', '/')
                     visual_options.append({
                         "id": f"option_{i+1}",
                         "label": f"Concept {i+1}",
@@ -324,7 +343,6 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
     1. Client's target Design Style (e.g. Organic Modern, Japandi, Art Deco, etc.). Ensure it aligns with their Preferred Visual Style if one is selected.
     2. Estimated room size (area_sqft), scope of work (furnishing, soft remodel, gut renovation), and material tier (premium, luxury, ultra-luxury)
     3. Project Timeline (immediate, 3-6 months, flexible)
-    4. Decision maker status (who is the final decision maker)
     
     If any of these details are missing, return a JSON with:
     "is_sufficient": false,
@@ -334,7 +352,6 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
     "is_sufficient": true,
     "design_dna": "The final consolidated style name",
     "timeline": "Timeline summary",
-    "decision_maker": "Decision-maker summary",
     "area_sqft": Int (estimate if not explicitly given, e.g. 300),
     "scope_level": Int (1 = Furnishing, 2 = Soft Remodel, 3 = Gut Renovate),
     "material_tier": Int (1 = Premium, 2 = Luxury, 3 = Ultra-Luxury)
@@ -369,7 +386,6 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
                 "selected_image_url": selected_image_url,
                 "design_dna": res.get("design_dna", "Modern Luxury"),
                 "timeline": res.get("timeline", "Flexible"),
-                "decision_maker": res.get("decision_maker", "Owner"),
                 "area_sqft": int(res.get("area_sqft", 300)),
                 "scope_level": int(res.get("scope_level", 2)),
                 "material_tier": int(res.get("material_tier", 2)),
@@ -402,23 +418,15 @@ def node_refinement(state: Dict[str, Any]) -> Dict[str, Any]:
 def node_synthesis(state: Dict[str, Any]) -> Dict[str, Any]:
     """Phase 4: Synthesis, generative sourcing list, readiness scoring"""
     # 1. Compute Readiness Score (0-100)
-    # Timeline score: immediate (20), 3-6 months (20), flexible (15), rush (5)
+    # Timeline score: immediate (40), 3-6 months (40), flexible (20), rush (10)
     timeline_str = state.get("timeline", "3-6 months").lower()
-    t_score = 20
+    t_score = 40
     if "immediate" in timeline_str or "3-6" in timeline_str:
-        t_score = 20
+        t_score = 40
     elif "flex" in timeline_str:
-        t_score = 15
+        t_score = 20
     elif "rush" in timeline_str or "week" in timeline_str:
         t_score = 10
-        
-    # Decision Maker: all parties aligned (20), solo (15), unaligned (5)
-    dm_str = state.get("decision_maker", "Solo").lower()
-    dm_score = 20
-    if "partner" in dm_str or "spouse" in dm_str or "both" in dm_str:
-        dm_score = 20
-    elif "solo" in dm_str or "self" in dm_str:
-        dm_score = 15
         
     # Scope Clarity: room dimensions & vision available (20)
     scope_score = 20 if state.get("vision_analysis") else 10
@@ -426,7 +434,7 @@ def node_synthesis(state: Dict[str, Any]) -> Dict[str, Any]:
     # Design Sourcing available (40 points)
     b_score = 40 
     
-    readiness_score = t_score + dm_score + scope_score + b_score
+    readiness_score = t_score + scope_score + b_score
     
     # 2. LLM Generates Material & Furniture Sourcing List
     client = get_openai_client()

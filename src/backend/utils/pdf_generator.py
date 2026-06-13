@@ -261,8 +261,7 @@ def generate_intelligence_report(lead_data: dict, output_dir: str = "static/repo
         [Paragraph("<b>Estimated Square Footage</b>", meta_label_style), Paragraph(f"{area} sq ft", meta_val_style)],
         [Paragraph("<b>Scope of Renovation</b>", meta_label_style), Paragraph(scope, meta_val_style)],
         [Paragraph("<b>Material Tier</b>", meta_label_style), Paragraph(material, meta_val_style)],
-        [Paragraph("<b>Timeline Expectations</b>", meta_label_style), Paragraph(lead_data.get("timeline") or "Unspecified", meta_val_style)],
-        [Paragraph("<b>Decision-Maker Involvement</b>", meta_label_style), Paragraph(lead_data.get("decision_maker") or "Unspecified", meta_val_style)]
+        [Paragraph("<b>Timeline Expectations</b>", meta_label_style), Paragraph(lead_data.get("timeline") or "Unspecified", meta_val_style)]
     ]
     
     fin_table = Table(fin_data, colWidths=[180, 320])
@@ -291,7 +290,7 @@ def generate_intelligence_report(lead_data: dict, output_dir: str = "static/repo
     story.append(Paragraph("• <b>Discuss Room Bones:</b> Open the meeting by acknowledging the architectural highlights (e.g. fireplace, crown molding) to establish instant creative alignment.", bullet_style))
     story.append(Paragraph("• <b>Present Material Board:</b> Walk the client through the AI-generated Material Sourcing Board to gauge their reaction to the textures and colors.", bullet_style))
     story.append(Paragraph("• <b>Address Design Friction:</b> Address any style mismatch (e.g. lighting limits vs. selected design styles) by pitching alternative luxury textures (such as warm limewash plaster over bare drywall).", bullet_style))
-    story.append(Paragraph("• <b>Confirm Readiness Details:</b> Finalize decisions with " + (lead_data.get("decision_maker") or "both partners") + " to lock down the engagement details.", bullet_style))
+    story.append(Paragraph("• <b>Confirm Readiness Details:</b> Finalize timeline expectations to lock down the engagement details.", bullet_style))
     
     # Build document
     doc.build(story, canvasmaker=NumberedCanvas)

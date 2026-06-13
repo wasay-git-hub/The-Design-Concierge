@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   Sparkles, FileText, ArrowLeft, RefreshCw, Calendar, 
-  User, Mail, Phone, MapPin, Gauge, Download, Home, Maximize2 
+  User, Mail, Phone, MapPin, Gauge, Download, Home, Maximize2, Loader2 
 } from "lucide-react";
 
 const API_BASE = "http://localhost:8000";

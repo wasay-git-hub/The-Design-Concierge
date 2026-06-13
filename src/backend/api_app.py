@@ -179,6 +179,8 @@ def chat_refinement(
         
     db.commit()
     
+    lead_dict = lead.to_dict() if state.get("is_complete") else {}
+    
     return {
         "chat_history": state["chat_history"],
         "next_node": state.get("next_node", ""),
@@ -187,6 +189,8 @@ def chat_refinement(
         "lead_summary": {
             "design_dna": lead.design_dna,
             "readiness_score": lead.readiness_score,
+            "budget_min": lead_dict.get("budget_min"),
+            "budget_max": lead_dict.get("budget_max"),
             "sourcing_list": state.get("sourcing_list", [])
         } if state.get("is_complete") else None
     }

@@ -33,7 +33,6 @@ class AgentState(TypedDict):
     # Readiness Metrics
     readiness_score: int
     timeline: str
-    decision_maker: str
     
     # Multi-Modal Vision Analysis
     room_photo_url: str
@@ -139,6 +138,6 @@ memory = SqliteSaver(conn)
 
 compiled_graph = workflow.compile(
     checkpointer=memory,
-    interrupt_before=["vision_analysis", "style_questionnaire", "dynamic_visuals", "refinement", "synthesis"]
+    interrupt_before=["vision_analysis", "refinement"]
 )
 print("LangGraph Agentic Discovery Workflow successfully compiled with production Checkpointer.")

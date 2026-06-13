@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Sparkles, ArrowRight, Upload, Loader2, MessageSquare, 
   MapPin, CheckCircle2, FileDown, DollarSign, Maximize2 
@@ -58,12 +58,10 @@ export default function Home() {
   });
   const [pdfUrl, setPdfUrl] = useState<string>("");
 
-  // Scroll to bottom of chat
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-  };
+  // Auto-scroll on new messages
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory.length]);
 
   // 1. Submit basic onboarding form
   const handleOnboardSubmit = async (e: React.FormEvent) => {
@@ -126,7 +124,6 @@ export default function Home() {
       setVisionAnalysis(data.vision_analysis);
       setCurrentQuestion(data.current_question);
       setStep("chat");
-      scrollToBottom();
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to analyze image.");
     } finally {
@@ -151,7 +148,6 @@ export default function Home() {
     // Optimistically update frontend UI
     const updatedHistory = [...chatHistory, { role: "user" as const, content: userMessage }];
     setChatHistory(updatedHistory);
-    scrollToBottom();
 
     const formData = new FormData();
     formData.append("lead_id", leadId);
@@ -171,16 +167,14 @@ export default function Home() {
 
       if (data.is_complete) {
         setSummary({
-          design_dna: data.lead_summary.design_dna,
-          budget_min: data.lead_summary.budget_min,
-          budget_max: data.lead_summary.budget_max,
-          readiness_score: data.lead_summary.readiness_score,
+          design_dna: data.lead_summary.design_dna || "",
+          budget_min: data.lead_summary.budget_min ?? 0,
+          budget_max: data.lead_summary.budget_max ?? 0,
+          readiness_score: data.lead_summary.readiness_score ?? 0,
         });
         setStep("complete");
         // Trigger PDF generation in the background automatically
         triggerPdfGeneration();
-      } else {
-        scrollToBottom();
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to deliver message.");
@@ -247,8 +241,9 @@ export default function Home() {
                 </p>
 
                 {errorMsg && (
-                  <div className="bg-red-50 text-red-700 text-xs p-3 rounded border border-red-100 mb-6">
-                    {errorMsg}
+                  <div className="bg-red-50 text-red-700 text-xs p-3 rounded border border-red-100 mb-6 flex justify-between items-center">
+                    <span>{errorMsg}</span>
+                    <button onClick={() => {setErrorMsg(""); setStep("onboard");}} className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">Start Over</button>
                   </div>
                 )}
 
@@ -311,7 +306,7 @@ export default function Home() {
                       >
                         <option value="Living Room">Living Room</option>
                         <option value="Kitchen">Kitchen</option>
-                        <option value="Master Bedroom">Master Bedroom</option>
+                        <option value="Bedroom">Bedroom</option>
                         <option value="Bathroom">Bathroom</option>
                       </select>
                     </div>
@@ -345,8 +340,9 @@ export default function Home() {
               </p>
 
               {errorMsg && (
-                <div className="bg-red-50 text-red-700 text-xs p-3 rounded border border-red-100 mb-6">
-                  {errorMsg}
+                <div className="bg-red-50 text-red-700 text-xs p-3 rounded border border-red-100 mb-6 flex justify-between items-center">
+                  <span>{errorMsg}</span>
+                  <button onClick={() => {setErrorMsg(""); setStep("onboard");}} className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">Go Back</button>
                 </div>
               )}
 
@@ -479,12 +475,22 @@ export default function Home() {
                       )}
                     </div>
                   ))}
+                  
+                  {loading && (
+                    <div className="p-3 rounded-lg max-w-[85%] bg-luxury-lightGray text-luxury-charcoal mr-auto flex gap-2 items-center">
+                      <div className="w-2 h-2 rounded-full bg-luxury-brass/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 rounded-full bg-luxury-brass/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 rounded-full bg-luxury-brass/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  )}
+
                   <div ref={chatEndRef} />
                 </div>
 
                 {errorMsg && (
-                  <div className="bg-red-50 text-red-700 text-xs p-2 rounded border border-red-100 mb-2">
-                    {errorMsg}
+                  <div className="bg-red-50 text-red-700 text-xs p-2 rounded border border-red-100 mb-2 flex justify-between items-center">
+                    <span>{errorMsg}</span>
+                    <button onClick={() => setErrorMsg("")} className="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 ml-2">Dismiss</button>
                   </div>
                 )}
 
@@ -521,51 +527,18 @@ export default function Home() {
                 Your Project Brief is Ready
               </h2>
               <p className="text-sm text-luxury-charcoal/70 mb-8 max-w-md">
-                We've combined your spatial data and vision preferences. 
-                Our ML model has computed your construction budget estimate range.
+                We've combined your spatial data and vision preferences to compile your personalized project brief.
               </p>
 
               {/* Estimate Summary card */}
-              <div className="w-full bg-luxury-cream border border-luxury-border rounded-lg p-6 grid grid-cols-2 gap-4 text-left mb-8">
-                <div>
-                  <span className="text-[10px] uppercase tracking-wider text-luxury-brass block">Design DNA Style</span>
-                  <span className="text-sm font-semibold text-luxury-charcoal">{summary.design_dna}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase tracking-wider text-luxury-brass block">Readiness Score</span>
-                  <span className="text-sm font-semibold text-luxury-charcoal">{summary.readiness_score}/100</span>
-                </div>
-                <div className="col-span-2 border-t border-luxury-border pt-4 mt-2">
-                  <span className="text-[10px] uppercase tracking-wider text-luxury-brass block">ML Predictor Estimated Budget Range</span>
-                  <div className="flex items-center gap-1 text-lg font-bold text-luxury-charcoal mt-1">
-                    <DollarSign className="w-4 h-4 text-luxury-brass" />
-                    <span>${summary.budget_min.toLocaleString()} - ${summary.budget_max.toLocaleString()}</span>
-                  </div>
-                  <span className="text-[9px] text-luxury-charcoal/50 block mt-1">
-                    Based on Gradient Boosting cost predictions representing boutique projects in {form.location}.
-                  </span>
-                </div>
+              <div className="w-full bg-luxury-cream border border-luxury-border rounded-lg p-6 flex flex-col items-center justify-center mb-8">
+                <span className="text-[10px] uppercase tracking-wider text-luxury-brass block mb-1">Your Unique Design DNA</span>
+                <span className="text-xl font-bold text-luxury-charcoal">{summary.design_dna}</span>
               </div>
 
-              {pdfUrl ? (
-                <a 
-                  href={pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-6 py-3 bg-luxury-charcoal hover:bg-luxury-brass text-white text-xs font-bold uppercase tracking-widest rounded transition flex items-center gap-2"
-                >
-                  <FileDown className="w-4 h-4" />
-                  Download Project Intelligence Report (PDF)
-                </a>
-              ) : (
-                <button 
-                  disabled
-                  className="px-6 py-3 bg-gray-300 text-white text-xs font-bold uppercase tracking-widest rounded transition flex items-center gap-2"
-                >
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Compiling Branded PDF Report...
-                </button>
-              )}
+              <p className="text-xs text-luxury-charcoal/60 max-w-sm text-center mx-auto">
+                Your dedicated designer has received your full intelligence report and will be in touch shortly to schedule your consultation!
+              </p>
             </div>
           )}
 
