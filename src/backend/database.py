@@ -33,7 +33,6 @@ class Lead(Base):
     # Readiness Metrics
     readiness_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     timeline: Mapped[str | None] = mapped_column(String, nullable=True)
-    decision_maker: Mapped[str | None] = mapped_column(String, nullable=True)
     
     # Multi-Modal Vision Analysis (JSON encoded string)
     vision_analysis: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -50,21 +49,6 @@ class Lead(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
-        if self.area_sqft is not None and self.scope_level is not None and self.material_tier is not None:
-            from src.backend.model_pipeline.model import predict_design_cost
-            try:
-                budget_min, budget_max = predict_design_cost(
-                    location=self.location or "Austin",
-                    room_type=self.room_type or "Living Room",
-                    area_sqft=self.area_sqft,
-                    scope_level=self.scope_level,
-                    material_tier=self.material_tier
-                )
-            except Exception:
-                budget_min, budget_max = None, None
-        else:
-            budget_min, budget_max = None, None
-
         return {
             "id": self.id,
             "name": self.name,
@@ -75,11 +59,8 @@ class Lead(Base):
             "area_sqft": self.area_sqft,
             "scope_level": self.scope_level,
             "material_tier": self.material_tier,
-            "budget_min": budget_min,
-            "budget_max": budget_max,
             "readiness_score": self.readiness_score,
             "timeline": self.timeline,
-            "decision_maker": self.decision_maker,
             "vision_analysis": json.loads(self.vision_analysis) if isinstance(self.vision_analysis, str) else None,
             "style_answers": json.loads(self.style_answers) if isinstance(self.style_answers, str) else None,
             "selected_image_url": self.selected_image_url,

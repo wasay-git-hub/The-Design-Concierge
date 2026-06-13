@@ -170,13 +170,6 @@ export default function DesignerDashboard() {
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getReadinessColor(lead.readiness_score)}`}>
                       R: {lead.readiness_score}
                     </span>
-                    {lead.budget_min ? (
-                      <span className="text-[11px] font-semibold text-luxury-charcoal/70">
-                        ${(lead.budget_min/1000).toFixed(0)}k - ${(lead.budget_max/1000).toFixed(0)}k
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-luxury-charcoal/40 font-semibold">Estimating...</span>
-                    )}
                   </div>
                 </div>
               ))}
@@ -216,8 +209,8 @@ export default function DesignerDashboard() {
               {/* Detail Content Grid */}
               <div className="p-6 overflow-y-auto max-h-[500px] space-y-6">
                 
-                {/* 3 Columns metrics info */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 2 Columns metrics info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-luxury-cream border border-luxury-border rounded-lg p-4 flex flex-col justify-center">
                     <span className="text-[10px] uppercase font-bold text-luxury-brass tracking-wider">Readiness Score</span>
                     <div className="flex items-center gap-2 mt-1">
@@ -228,12 +221,6 @@ export default function DesignerDashboard() {
                   <div className="bg-luxury-cream border border-luxury-border rounded-lg p-4 flex flex-col justify-center">
                     <span className="text-[10px] uppercase font-bold text-luxury-brass tracking-wider">Design DNA Style</span>
                     <span className="text-base font-bold text-luxury-charcoal mt-1 truncate">{selectedLead.design_dna || "Not Assessment Complete"}</span>
-                  </div>
-                  <div className="bg-luxury-cream border border-luxury-border rounded-lg p-4 flex flex-col justify-center">
-                    <span className="text-[10px] uppercase font-bold text-luxury-brass tracking-wider">ML Est. Budget Range</span>
-                    <span className="text-base font-bold text-luxury-charcoal mt-1">
-                      {selectedLead.budget_min ? `$${selectedLead.budget_min.toLocaleString()} - $${selectedLead.budget_max.toLocaleString()}` : "Incomplete"}
-                    </span>
                   </div>
                 </div>
 
@@ -274,11 +261,7 @@ export default function DesignerDashboard() {
                         <span className="font-bold block text-[10px] uppercase text-luxury-brass tracking-wider">Project Schedule Timeline</span>
                         <p className="text-luxury-charcoal/80 mt-1">{selectedLead.timeline || "No timeline parsed"}</p>
                       </div>
-                      <div>
-                        <span className="font-bold block text-[10px] uppercase text-luxury-brass tracking-wider">Decision Maker status</span>
-                        <p className="text-luxury-charcoal/80 mt-1">{selectedLead.decision_maker || "No status parsed"}</p>
                       </div>
-                    </div>
                   </div>
 
                   {/* Administrative Configuration */}

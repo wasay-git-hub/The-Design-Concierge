@@ -170,7 +170,6 @@ def chat_refinement(
         lead.scope_level = state.get("scope_level")
         lead.material_tier = state.get("material_tier")
         lead.timeline = state.get("timeline")
-        lead.decision_maker = state.get("decision_maker")
         lead.readiness_score = state.get("readiness_score")
         lead.style_answers = json.dumps(state.get("style_answers", {}))
         lead.selected_image_url = state.get("selected_image_url")
@@ -189,8 +188,6 @@ def chat_refinement(
         "lead_summary": {
             "design_dna": lead.design_dna,
             "readiness_score": lead.readiness_score,
-            "budget_min": lead_dict.get("budget_min"),
-            "budget_max": lead_dict.get("budget_max"),
             "sourcing_list": state.get("sourcing_list", [])
         } if state.get("is_complete") else None
     }
