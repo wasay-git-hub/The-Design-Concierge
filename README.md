@@ -8,9 +8,9 @@ The Design Concierge is an automated **Digital Junior Designer** for high-end bo
 
 1. **Visual Empathy (GPT-4o Vision API)**: Analyzes client-uploaded room photos, extracting architectural bones, natural light orientation, existing style, and dimensions to ensure the client feels understood instantly.
 2. **Taste & Style DNA Discovery (Stateful LangGraph)**: Orchestrates a refined, professional chat interview that identifies mismatches between user requests (e.g., "Airy Scandinavian") and spatial limitations (e.g., a dark basement), presenting custom designer workarounds.
-3. **ML-Driven Budget Estimator (`GradientBoostingRegressor`)**: Predicts project cost ranges using a Gradient Boosting model trained on high-end renovation indexes. The assistant presents the estimate without negotiating, leaving customization to the designer.
-4. **Project Readiness Scoring**: Aggregates timeline, decision-maker status, scope, and budget alignment to calculate a lead readiness score (0-100) so designers can prioritize high-value client bookings.
-5. **PDF Intelligence Report (ReportLab)**: Generates a luxury-branded, technical project briefing PDF for the architect/designer's 1-on-1 consultation.
+3. **Project Readiness Scoring**: Aggregates timeline, scope, and visual constraint alignment to calculate a lead readiness score (0-100) so designers can prioritize high-value client bookings.
+4. **PDF Intelligence Report (ReportLab)**: Generates a luxury-branded, technical project briefing PDF for the architect/designer's 1-on-1 consultation.
+5. **LLM Observability (Langfuse)**: Natively tracks token usage, API latency, and conversation traces for the backend agent across all sessions.
 
 ---
 
@@ -18,29 +18,27 @@ The Design Concierge is an automated **Digital Junior Designer** for high-end bo
 
 ```
 c:\Users\wasay\The-Design-Concierge\
-├── frontend/                     # Next.js App
-│   ├── src/app/
-│   │   ├── page.tsx              # Client onboarding interface
-│   │   └── designer/page.tsx     # Designer lead management dashboard
-│   ├── src/app/globals.css       # Tailwind rules & scrollbars
-│   ├── package.json              # Next.js dependencies
-│   └── tailwind.config.js        # Custom branding tokens
-│
-├── backend/                      # Python FastAPI Service
-│   ├── app/
-│   │   ├── main.py               # FastAPI routers & endpoints
-│   │   ├── db.py                 # SQLAlchemy SQLite models
-│   │   ├── config.py             # System paths and variables
-│   │   ├── graphs/
-│   │   │   ├── workflow.py       # LangGraph routing compilation
-│   │   │   └── nodes.py          # Onboarding, Vision & Refinement logic
-│   │   ├── ml/
-│   │   │   └── model.py          # Cost prediction inference module
-│   │   └── utils/
-│   │       └── pdf_generator.py  # ReportLab luxury PDF layout compiler
-│   ├── train_budget_model.py     # Gradient Boosting model training script
-│   ├── requirements.txt          # Python dependencies
-│   └── .env.example              # Environment variable templates
+├── src/
+│   ├── frontend/                 # Next.js App
+│   │   ├── src/app/
+│   │   │   ├── page.tsx          # Client onboarding interface
+│   │   │   └── designer/page.tsx # Designer lead management dashboard
+│   │   ├── package.json          # Next.js dependencies
+│   │   └── tailwind.config.ts    # Custom branding tokens
+│   │
+│   └── backend/                  # Python FastAPI Service
+│       ├── api_app.py            # FastAPI routers & endpoints
+│       ├── database.py           # SQLAlchemy SQLite models
+│       ├── config.py             # System paths and variables
+│       ├── graphs/
+│       │   ├── workflow.py       # LangGraph routing compilation
+│       │   └── nodes.py          # Onboarding, Vision & Refinement logic
+│       └── utils/
+│           └── pdf_generator.py  # ReportLab luxury PDF layout compiler
+├── data/                         # Local SQLite databases (database.sqlite, checkpoints.sqlite)
+├── static/                       # Uploaded room photos and generated PDFs
+├── requirements.txt              # Python dependencies
+├── .env.example                  # Environment variable templates
 └── README.md                     # Documentation
 ```
 
@@ -52,30 +50,25 @@ c:\Users\wasay\The-Design-Concierge\
 Navigate to the root directory `c:\Users\wasay\The-Design-Concierge`.
 
 #### A. Configure Environment
-1. In the `backend` folder, duplicate `.env.example` and rename it to `.env`:
+1. In the root folder, duplicate `.env.example` and rename it to `.env`:
    ```bash
-   cp backend/.env.example backend/.env
+   cp .env.example .env
    ```
-2. Open `backend/.env` and insert your OpenAI API Key:
+2. Open `.env` and insert your OpenAI API Key:
    ```env
    OPENAI_API_KEY=sk-...
-   ```
-   *Note: If no API key is specified, the application will run in fallback simulation mode so you can fully test the flow without API charges.*
 
-#### B. Train the ML Cost Model
-Before launching the backend, you must train and serialize the Gradient Boosting model.
-1. Place your Kaggle or custom project estimation CSV dataset as `budget_data.csv` in the root folder.
-   *Note: If `budget_data.csv` is not found, the script will automatically generate a highly realistic dataset based on luxury industry renovation cost statistics for Miami, Austin, and Scottsdale to run out-of-the-box.*
-2. Train the model:
-   ```bash
-   venv\Scripts\python backend/train_budget_model.py
+   # (Optional) Langfuse Analytics Keys
+   LANGFUSE_PUBLIC_KEY=pk-lf-...
+   LANGFUSE_SECRET_KEY=sk-lf-...
+   LANGFUSE_HOST=your_langfuse_base_url
    ```
-3. Once completed, you will see the model's metrics (R-squared score and Mean Absolute Error) and the serialized pipeline saved to `backend/app/ml/budget_model.joblib`.
+   *Note: If no OpenAI key is specified, the application will run in fallback simulation mode so you can fully test the flow without API charges.*
 
-#### C. Start the FastAPI Server
+#### B. Start the FastAPI Server
 Launch the API server on `http://localhost:8000`:
 ```bash
-venv\Scripts\python -m uvicorn backend.app.main:app --reload
+python -m uvicorn src.backend.api_app:app --reload
 ```
 
 ---
@@ -84,9 +77,9 @@ venv\Scripts\python -m uvicorn backend.app.main:app --reload
 *Note: Make sure Node.js is installed on your computer.*
 
 #### A. Install Next.js Dependencies
-Navigate to the `frontend` directory:
+Navigate to the `src/frontend` directory:
 ```bash
-cd frontend
+cd src/frontend
 npm install
 ```
 
