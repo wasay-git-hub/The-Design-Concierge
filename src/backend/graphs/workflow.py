@@ -138,6 +138,6 @@ memory = SqliteSaver(conn)
 
 compiled_graph = workflow.compile(
     checkpointer=memory,
-    interrupt_before=["vision_analysis", "refinement"]
+    interrupt_before=["vision_analysis", "style_questionnaire", "refinement"]
 )
 print("LangGraph Agentic Discovery Workflow successfully compiled with production Checkpointer.")

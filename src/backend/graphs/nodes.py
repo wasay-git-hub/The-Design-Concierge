@@ -18,7 +18,7 @@ def encode_image(image_path: str) -> str:
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-def analyze_room_photo_with_gpt4o(image_path: str) -> Dict[str, Any]:
+def analyze_room_photo_with_gpt4o(image_path: str, expected_room_type: str = "room") -> Dict[str, Any]:
     """
     Sends the uploaded photo to the GPT-4o Vision API to analyze room aesthetics,
     architectural bones, lighting, and layout constraints.
@@ -30,13 +30,15 @@ def analyze_room_photo_with_gpt4o(image_path: str) -> Dict[str, Any]:
     try:
         base64_image = encode_image(image_path)
         
-        prompt = """
+        prompt = f"""
         You are a Senior Technical Architect and Principal Interior Designer. 
+        The client indicated this is a photo of their '{expected_room_type}'.
         Analyze this room photo and output a highly detailed, professional analysis in JSON format.
         Focus on structural elements, lighting limits, styling details, and design challenges.
         
         Your output JSON must contain exactly these keys:
-        - "architectural_bones": String. Describe structure (moldings, ceiling height, fireplace, column locations).
+        - "is_valid_room": Boolean. True ONLY if the image is a genuine photograph of a physical interior room AND it could reasonably be a {expected_room_type}. False if it is a screenshot, UI, chart, blank image, exterior, irrelevant, or obviously the wrong room (e.g., they selected Kitchen but uploaded a Bathroom).
+        - "architectural_bones": String. Describe structure (moldings, ceiling height, fireplace, column locations). If is_valid_room is False, set to "N/A".
         - "lighting_profile": String. Describe natural light direction and sources vs. artificial light issues.
         - "current_style": String. Identify current layout theme and colors.
         - "estimated_dimensions": String. Estimate height, width, length, and square footage.
@@ -109,7 +111,16 @@ def node_vision_analysis(state: Dict[str, Any]) -> Dict[str, Any]:
     # Analyze the photo
     print(f"Analyzing room image: '{image_path}'...")
     try:
-        vision_profile = analyze_room_photo_with_gpt4o(image_path)
+        expected_room_type = state.get("room_type", "room")
+        vision_profile = analyze_room_photo_with_gpt4o(image_path, expected_room_type)
+        if not vision_profile.get("is_valid_room", True):
+            error_msg = f"I couldn't detect a clear {expected_room_type} in this photo. Please upload a valid photo of your actual space."
+            chat_history.append({"role": "assistant", "content": error_msg})
+            return {
+                "chat_history": chat_history,
+                "next_node": "vision_analysis",
+                "current_question": error_msg
+            }
     except Exception as e:
         print(f"Vision API Error: {e}")
         error_msg = "Our design servers are currently experiencing high traffic. Please try uploading the photo again."
@@ -125,7 +136,9 @@ def node_vision_analysis(state: Dict[str, Any]) -> Dict[str, Any]:
         f"🏛️ **Architectural Bones:** {vision_profile['architectural_bones']}\n\n"
         f"☀️ **Lighting Profile:** {vision_profile['lighting_profile']}\n\n"
         f"🎨 **Current Aesthetic:** {vision_profile['current_style']}\n\n"
-        f"I've got the structural constraints logged. Now, let's nail down your specific taste."
+        f"I've got the structural constraints logged. Now, let's nail down your specific taste.\n\n"
+        f"I will ask exactly 4 questions now so I can get an idea of your taste.\n\n"
+        f"**Question 1:** Do you lean toward light, airy, and bright spaces, or dark, moody, and cozy environments?"
     )
     
     chat_history.append({"role": "assistant", "content": response_msg})
@@ -162,7 +175,15 @@ def node_style_questionnaire(state: Dict[str, Any]) -> Dict[str, Any]:
         
         if current_q_key and client:
             try:
-                prompt = f"The user replied to a design question. Extract their preference.\nUser's message: '{chat_history[-1]['content']}'\nReturn ONLY a JSON object: {{\"{current_q_key}\": \"extracted summary of their preference\"}}. If the user's message is completely irrelevant to the question, return ONLY a JSON object: {{\"{current_q_key}\": \"irrelevant\"}}."
+                question_asked = chat_history[-2]['content'] if len(chat_history) >= 2 else ''
+                prompt = f"""You are analyzing a user's response to an interior design question about '{current_q_key}'.
+Question asked: "{question_asked}"
+User's response: "{chat_history[-1]['content']}"
+
+Evaluate if their response is a valid, relevant answer to the design question. 
+If their response is irrelevant, nonsensical, or completely unrelated to interior design (e.g., 'bullish market', 'full of profits', gibberish), you MUST return EXACTLY: {{"{current_q_key}": "irrelevant"}}.
+Otherwise, extract their preference and return ONLY a JSON object: {{"{current_q_key}": "extracted summary of their preference"}}.
+"""
                 res = client.chat.completions.create(
                     model="gpt-5.4-mini",
                     response_format={"type": "json_object"},
@@ -193,18 +214,12 @@ def node_style_questionnaire(state: Dict[str, Any]) -> Dict[str, Any]:
             break
             
     if next_q:
-        # Prepend the intro message if this is the very first question
-        if len(style_answers) == 0:
-            next_q_display = f"I will ask 3-4 questions now so I can get an idea of your taste.\n\n{next_q}"
-        else:
-            next_q_display = next_q
-            
-        chat_history.append({"role": "assistant", "content": next_q_display})
+        chat_history.append({"role": "assistant", "content": next_q})
         return {
             "style_answers": style_answers,
             "chat_history": chat_history,
             "next_node": "style_questionnaire",
-            "current_question": next_q_display,
+            "current_question": next_q,
             "is_complete": False
         }
     else:

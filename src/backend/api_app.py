@@ -119,6 +119,10 @@ def upload_room_photo(
     # 4. Invoke the graph (Resumes from vision_analysis breakpoint, flows through visual_taste_test, stops at refinement)
     state = compiled_graph.invoke(None, config)
     
+    if state.get("next_node") == "vision_analysis":
+        error_msg = state.get("current_question", "Failed to analyze image. Please try again.")
+        raise HTTPException(status_code=400, detail=error_msg)
+    
     # Save structured vision results to database
     if "vision_analysis" in state and state["vision_analysis"]:
         lead.vision_analysis = json.dumps(state["vision_analysis"])
@@ -158,12 +162,8 @@ def chat_refinement(
     # 3. Invoke graph to resume from refinement
     state = compiled_graph.invoke(None, config)
     
-    # 4. Check if we hit the synthesis breakpoint (meaning refinement is complete)
-    next_breakpoint = compiled_graph.get_state(config).next
-    if state.get("is_complete") and "synthesis" in next_breakpoint:
-        # We need to explicitly resume one more time to run synthesis
-        state = compiled_graph.invoke(None, config)
-        
+    # 4. Check if refinement is complete
+    if state.get("is_complete"):
         # Sync Lead model columns with finalized assessment values
         lead.design_dna = state.get("design_dna")
         lead.area_sqft = state.get("area_sqft")

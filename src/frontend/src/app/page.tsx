@@ -209,6 +209,7 @@ export default function Home() {
     setPhotoPreview("");
     setLeadId("");
     setErrorMsg("");
+    setLoading(false);
     setForm({ name: "", email: "", phone: "", location: "Austin", room_type: "Living Room" });
   };
 
@@ -485,8 +486,8 @@ export default function Home() {
                               className="group cursor-pointer rounded overflow-hidden border-2 border-transparent hover:border-luxury-brass transition relative"
                             >
                               <img src={`${API_BASE}${opt.url}`} alt={opt.label} className="w-full h-24 object-cover" />
-                              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-end p-2">
-                                <span className="text-white text-[10px] font-bold uppercase tracking-wider">{opt.label}</span>
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent group-hover:from-black/50 transition flex items-end p-2">
+                                <span className="text-white text-[10px] font-bold uppercase tracking-wider drop-shadow-md">{opt.label}</span>
                               </div>
                             </div>
                           ))}
