@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { 
   Sparkles, ArrowRight, Upload, Loader2, MessageSquare, 
-  MapPin, CheckCircle2, FileDown, DollarSign, Maximize2 
+  MapPin, CheckCircle2, FileDown, DollarSign, Maximize2, RefreshCw
 } from "lucide-react";
 
 const API_BASE = "http://localhost:8000";
@@ -202,6 +202,16 @@ export default function Home() {
     }
   };
 
+  const handleReset = () => {
+    setStep("onboard");
+    setChatHistory([]);
+    setPhoto(null);
+    setPhotoPreview("");
+    setLeadId("");
+    setErrorMsg("");
+    setForm({ name: "", email: "", phone: "", location: "Austin", room_type: "Living Room" });
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Premium Navbar */}
@@ -212,12 +222,22 @@ export default function Home() {
             THE DESIGN CONCIERGE
           </span>
         </div>
-        <a 
-          href="/designer" 
-          className="text-xs uppercase tracking-widest text-luxury-brass hover:text-luxury-charcoal font-semibold transition"
-        >
-          Designer Portal
-        </a>
+        <div className="flex items-center gap-6">
+          {step !== "onboard" && (
+            <button 
+              onClick={handleReset}
+              className="text-xs uppercase tracking-widest text-luxury-charcoal hover:text-luxury-brass font-semibold transition flex items-center gap-1"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Start Over
+            </button>
+          )}
+          <a 
+            href="/designer" 
+            className="text-xs uppercase tracking-widest text-luxury-brass hover:text-luxury-charcoal font-semibold transition"
+          >
+            Designer Portal
+          </a>
+        </div>
       </header>
 
       {/* Main Container */}
@@ -241,9 +261,8 @@ export default function Home() {
                 </p>
 
                 {errorMsg && (
-                  <div className="bg-red-50 text-red-700 text-xs p-3 rounded border border-red-100 mb-6 flex justify-between items-center">
-                    <span>{errorMsg}</span>
-                    <button onClick={() => {setErrorMsg(""); setStep("onboard");}} className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">Start Over</button>
+                  <div className="bg-red-50 text-red-700 text-xs p-3 rounded border border-red-100 mb-6">
+                    {errorMsg}
                   </div>
                 )}
 
@@ -340,18 +359,18 @@ export default function Home() {
               </p>
 
               {errorMsg && (
-                <div className="bg-red-50 text-red-700 text-xs p-3 rounded border border-red-100 mb-6 flex justify-between items-center">
-                  <span>{errorMsg}</span>
-                  <button onClick={() => {setErrorMsg(""); setStep("onboard");}} className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">Go Back</button>
+                <div className="bg-red-50 text-red-700 text-xs p-3 rounded border border-red-100 mb-6">
+                  {errorMsg}
                 </div>
               )}
 
-              <div className="border-2 border-dashed border-luxury-border hover:border-luxury-brass rounded-lg p-8 text-center cursor-pointer transition relative bg-luxury-cream/30">
+              <div className={`border-2 border-dashed rounded-lg p-8 text-center transition relative ${loading ? 'border-luxury-border/50 bg-luxury-lightGray opacity-75' : 'border-luxury-border hover:border-luxury-brass bg-luxury-cream/30 cursor-pointer'}`}>
                 <input 
                   type="file" 
                   accept="image/*"
                   onChange={handleFileChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  disabled={loading}
+                  className={`absolute inset-0 opacity-0 ${loading ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 />
                 
                 {photoPreview ? (
@@ -367,7 +386,7 @@ export default function Home() {
                   <div className="flex flex-col items-center gap-2">
                     <Upload className="w-10 h-10 text-luxury-brass mb-2" />
                     <p className="text-sm font-semibold">Select your room photo</p>
-                    <p className="text-xs text-luxury-charcoal/50">Supports JPEG, PNG (Max 10MB)</p>
+                    <p className="text-xs text-luxury-charcoal/50">Supports JPEG, PNG, WEBP, GIF (Max 10MB)</p>
                   </div>
                 )}
               </div>

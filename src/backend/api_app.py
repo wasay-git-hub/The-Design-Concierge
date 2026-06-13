@@ -87,7 +87,7 @@ def onboard_client(
     }
 
 @app.post("/api/upload-photo")
-async def upload_room_photo(
+def upload_room_photo(
     lead_id: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
@@ -109,7 +109,7 @@ async def upload_room_photo(
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
     
     with open(file_path, "wb") as buffer:
-        content = await file.read()
+        content = file.file.read()
         buffer.write(content)
         
     # 3. Update LangGraph State with the photo path

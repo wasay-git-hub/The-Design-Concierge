@@ -5,7 +5,7 @@ import re
 import random
 import pandas as pd
 from typing import Dict, Any, List
-from openai import OpenAI
+from langfuse.openai import OpenAI
 from src.backend.config import OPENAI_API_KEY
 
 def get_openai_client():
