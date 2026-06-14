@@ -1,0 +1,20 @@
+.git
+.gitignore
+.env
+venv/
+node_modules/
+.next/
+__pycache__/
+*.pyc
+data/
+static/uploads/
+static/reports/
+.pytest_cache/
+tests/__pycache__/
+
+# Developer-only files
+tests/
+.vscode/
+pytest.ini
+pyrightconfig.json
+README.md
