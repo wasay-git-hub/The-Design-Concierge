@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { 
   Sparkles, ArrowRight, Upload, Loader2, MessageSquare, 
-  MapPin, CheckCircle2, FileDown, DollarSign, Maximize2, RefreshCw
+  MapPin, CheckCircle2, FileDown, DollarSign, Maximize2, RefreshCw, ArrowLeft
 } from "lucide-react";
 
 const API_BASE = "http://localhost:8000";
@@ -47,7 +47,7 @@ export default function Home() {
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const [userInput, setUserInput] = useState<string>("");
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Step 4 Completion state
   const [summary, setSummary] = useState({
@@ -60,7 +60,12 @@ export default function Home() {
 
   // Auto-scroll on new messages
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
   }, [chatHistory.length]);
 
   // 1. Submit basic onboarding form
@@ -117,7 +122,10 @@ export default function Home() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Failed to upload image.");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to upload image.");
+      }
       const data = await res.json();
 
       setChatHistory(data.chat_history);
@@ -229,7 +237,7 @@ export default function Home() {
               onClick={handleReset}
               className="text-xs uppercase tracking-widest text-luxury-charcoal hover:text-luxury-brass font-semibold transition flex items-center gap-1"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> Start Over
+              <ArrowLeft className="w-3.5 h-3.5" /> Start New Project
             </button>
           )}
           <a 
@@ -465,7 +473,10 @@ export default function Home() {
                 </div>
 
                 {/* Chat Message Thread */}
-                <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[300px] mb-4 text-sm scroll-smooth">
+                <div 
+                  ref={chatContainerRef}
+                  className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[300px] mb-4 text-sm scroll-smooth"
+                >
                   {chatHistory.map((msg: Message, index: number) => (
                     <div 
                       key={index}
@@ -503,8 +514,6 @@ export default function Home() {
                       <div className="w-2 h-2 rounded-full bg-luxury-brass/60 animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
                   )}
-
-                  <div ref={chatEndRef} />
                 </div>
 
                 {errorMsg && (
