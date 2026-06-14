@@ -133,6 +133,7 @@ workflow.add_edge("synthesis", END)
 # Compile Graph with Checkpointer and Breakpoints
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 db_path = os.path.join(root_dir, "data", "checkpoints.sqlite")
+os.makedirs(os.path.dirname(db_path), exist_ok=True)
 conn = sqlite3.connect(db_path, check_same_thread=False)
 memory = SqliteSaver(conn)
 
