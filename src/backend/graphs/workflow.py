@@ -141,9 +141,14 @@ if DATABASE_URL.startswith("postgresql") and "postgresql://..." not in DATABASE_
     pool = psycopg_pool.ConnectionPool(
         conninfo=DATABASE_URL,
         max_size=20,
+        max_idle=300,
         kwargs={
             "autocommit": True,
-            "row_factory": dict_row
+            "row_factory": dict_row,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5
         }
     )
     

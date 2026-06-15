@@ -27,5 +27,9 @@ export const authOptions: NextAuthOptions = {
       return false; // Access Denied!
     },
   },
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
   secret: process.env.NEXTAUTH_SECRET,
 };
