@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   // We secretly attach the BACKEND_API_KEY so Python knows it's an official request, 
   // not a random hacker on the internet.
   
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const backendUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   
   try {
     const res = await fetch(`${backendUrl}/api/leads`, {

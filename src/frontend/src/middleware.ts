@@ -3,9 +3,8 @@ import { withAuth } from "next-auth/middleware";
 // This file acts as the Bouncer for our Next.js application!
 export default withAuth({
   pages: {
-    // If an unauthenticated user tries to sneak in, NextAuth will automatically
-    // redirect them to the built-in Google Login screen instead of throwing an error.
-    signIn: "/api/auth/signin",
+    // We now route unauthenticated users to our custom, beautiful login screen!
+    signIn: "/login",
   },
 });
 
