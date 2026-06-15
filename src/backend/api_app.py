@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from src.backend.config import UPLOAD_DIR
-from src.backend.database import get_db, init_db, Lead
+from src.backend.database import get_db, init_db, Lead, Feedback
 from src.backend.graphs.workflow import compiled_graph
 from src.backend.utils.pdf_generator import generate_intelligence_report
 
@@ -247,3 +247,34 @@ def get_lead_details(lead_id: str, db: Session = Depends(get_db), api_key: str =
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found.")
     return lead.to_dict()
+
+@app.post("/api/feedback")
+def submit_feedback(
+    name: str = Form(None),
+    email: str = Form(None),
+    category: str = Form("Feedback"),
+    message: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Client view: Submit a new feedback or complaint
+    """
+    feedback_id = str(uuid.uuid4())
+    new_feedback = Feedback(
+        id=feedback_id,
+        name=name,
+        email=email,
+        category=category,
+        message=message
+    )
+    db.add(new_feedback)
+    db.commit()
+    return {"success": True, "feedback_id": feedback_id}
+
+@app.get("/api/feedback")
+def get_all_feedback(db: Session = Depends(get_db), api_key: str = Depends(verify_backend_api_key)):
+    """
+    Designer Portal Feedback List
+    """
+    feedbacks = db.query(Feedback).order_by(Feedback.created_at.desc()).all()
+    return [f.to_dict() for f in feedbacks]

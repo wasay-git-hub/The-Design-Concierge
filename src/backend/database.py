@@ -73,6 +73,26 @@ class Lead(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
+class Feedback(Base):
+    __tablename__ = "feedbacks"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    name: Mapped[str | None] = mapped_column(String, nullable=True)
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
+    message: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String, default="Feedback")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "message": self.message,
+            "category": self.category,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
 # Database dependency helper
 def get_db():
     db = SessionLocal()

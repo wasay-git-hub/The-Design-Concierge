@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description: "Agentic Discovery System - Digital Junior Designer Assessment Portal",
 };
 
+import FeedbackWidget from "@/components/FeedbackWidget";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,6 +30,7 @@ export default function RootLayout({
     <html lang="en" className={`${outfit.variable} ${playfair.variable}`}>
       <body className="bg-luxury-cream text-luxury-charcoal font-sans antialiased min-h-screen">
         {children}
+        <FeedbackWidget />
       </body>
     </html>
   );
