@@ -3,7 +3,8 @@ import json
 import uuid
 from datetime import datetime
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Security
+from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -19,6 +20,14 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="The Design Concierge API", lifespan=lifespan)
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_backend_api_key(api_key_header: str = Security(api_key_header)):
+    expected_api_key = os.getenv("BACKEND_API_KEY", "super-secret-key-123")
+    if api_key_header != expected_api_key:
+        raise HTTPException(status_code=403, detail="Could not validate API Key")
+    return api_key_header
 
 # Configure CORS for Next.js frontend communication
 app.add_middleware(
@@ -222,7 +231,7 @@ def generate_report(
     }
 
 @app.get("/api/leads")
-def get_all_leads(db: Session = Depends(get_db)):
+def get_all_leads(db: Session = Depends(get_db), api_key: str = Depends(verify_backend_api_key)):
     """
     Designer Portal Dashboard Lead List
     """
@@ -230,7 +239,7 @@ def get_all_leads(db: Session = Depends(get_db)):
     return [l.to_dict() for l in leads]
 
 @app.get("/api/leads/{lead_id}")
-def get_lead_details(lead_id: str, db: Session = Depends(get_db)):
+def get_lead_details(lead_id: str, db: Session = Depends(get_db), api_key: str = Depends(verify_backend_api_key)):
     """
     Designer Portal Lead Detail View
     """

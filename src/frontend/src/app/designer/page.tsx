@@ -41,7 +41,8 @@ export default function DesignerDashboard() {
     if (showRefreshIndicator) setRefreshing(true);
     setErrorMsg("");
     try {
-      const res = await fetch(`${API_BASE}/api/leads`);
+      // PROXY PATTERN: Instead of hitting Python directly, we hit our own Next.js server!
+      const res = await fetch(`/api/proxy/leads`);
       if (!res.ok) throw new Error("Could not retrieve leads from the database.");
       const data = await res.json();
       setLeads(data);
