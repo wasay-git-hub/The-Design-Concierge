@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
 import os
+from src.backend.config import DATABASE_URL
 from src.backend.graphs.nodes import (
     node_welcome,
     node_vision_analysis,
@@ -131,11 +132,30 @@ workflow.add_conditional_edges(
 workflow.add_edge("synthesis", END)
 
 # Compile Graph with Checkpointer and Breakpoints
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-db_path = os.path.join(root_dir, "data", "checkpoints.sqlite")
-os.makedirs(os.path.dirname(db_path), exist_ok=True)
-conn = sqlite3.connect(db_path, check_same_thread=False)
-memory = SqliteSaver(conn)
+if DATABASE_URL.startswith("postgresql") and "postgresql://..." not in DATABASE_URL:
+    import psycopg_pool
+    from psycopg.rows import dict_row
+    from langgraph.checkpoint.postgres import PostgresSaver
+    
+    # We must use a connection pool for Postgres
+    pool = psycopg_pool.ConnectionPool(
+        conninfo=DATABASE_URL,
+        max_size=20,
+        kwargs={
+            "autocommit": True,
+            "row_factory": dict_row
+        }
+    )
+    
+    pool.open()
+    memory = PostgresSaver(pool)  # type: ignore
+    memory.setup()
+else:
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    db_path = os.path.join(root_dir, "data", "checkpoints.sqlite")
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    memory = SqliteSaver(conn)
 
 compiled_graph = workflow.compile(
     checkpointer=memory,
