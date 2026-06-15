@@ -6,9 +6,11 @@ from sqlalchemy.orm import sessionmaker, Mapped, mapped_column
 from src.backend.config import DATABASE_URL
 
 # Create database engine and session
-engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False}  # check_same_thread=False is needed for SQLite multi-threading
-)
+# SQLite requires check_same_thread=False, but PostgreSQL will crash if you pass it!
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
