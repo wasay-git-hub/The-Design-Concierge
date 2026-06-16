@@ -25,7 +25,8 @@ class Lead(Base):
     
     # Project Parameters
     location: Mapped[str | None] = mapped_column(String, nullable=True)
-    room_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    room_type: Mapped[str] = mapped_column(String)
+    vision: Mapped[str | None] = mapped_column(Text, nullable=True)
     area_sqft: Mapped[int | None] = mapped_column(Integer, nullable=True)
     scope_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     material_tier: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -59,6 +60,7 @@ class Lead(Base):
             "phone": self.phone,
             "location": self.location,
             "room_type": self.room_type,
+            "vision": self.vision,
             "area_sqft": self.area_sqft,
             "scope_level": self.scope_level,
             "material_tier": self.material_tier,

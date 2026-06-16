@@ -24,6 +24,7 @@ class AgentState(TypedDict):
     # Project characteristics
     location: str
     room_type: str
+    vision: str
     area_sqft: int
     scope_level: int
     material_tier: int
@@ -156,11 +157,7 @@ if DATABASE_URL.startswith("postgresql") and "postgresql://..." not in DATABASE_
     memory = PostgresSaver(pool)  # type: ignore
     memory.setup()
 else:
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    db_path = os.path.join(root_dir, "data", "checkpoints.sqlite")
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    memory = SqliteSaver(conn)
+    raise RuntimeError("Only PostgreSQL is supported. Please ensure DATABASE_URL is set to a PostgreSQL URL.")
 
 compiled_graph = workflow.compile(
     checkpointer=memory,

@@ -15,8 +15,8 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Directories
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-SOURCE_DIR = os.path.join(ROOT_DIR, "curated_catalog")
-STATIC_CATALOG_DIR = os.path.join(ROOT_DIR, "static", "catalog")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(ROOT_DIR))
+CATALOG_DIR = os.path.join(PROJECT_ROOT, "static", "catalog")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -68,56 +68,58 @@ def generate_embedding(text):
     return response.data[0].embedding
 
 def seed_catalog():
-    if not os.path.exists(SOURCE_DIR):
-        print(f"Creating source directory {SOURCE_DIR}")
-        os.makedirs(SOURCE_DIR)
-        print("Please place your images in this folder and run the script again.")
+    if not os.path.exists(CATALOG_DIR):
+        print(f"Directory not found: {CATALOG_DIR}")
         return
         
-    os.makedirs(STATIC_CATALOG_DIR, exist_ok=True)
-    
     session = init_db()
-    
-    valid_extensions = {".jpg", ".jpeg", ".png", ".webp"}
     
     images_processed = 0
     
-    for filename in os.listdir(SOURCE_DIR):
-        ext = os.path.splitext(filename)[1].lower()
-        if ext not in valid_extensions:
+    for filename in os.listdir(CATALOG_DIR):
+        if not filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
             continue
-            
-        source_path = os.path.join(SOURCE_DIR, filename)
-        dest_filename = filename.replace(" ", "_").lower()
-        dest_path = os.path.join(STATIC_CATALOG_DIR, dest_filename)
+
+        file_path = os.path.join(CATALOG_DIR, filename)
         
         # Check if already processed
-        url_path = f"/static/catalog/{dest_filename}"
+        url_path = f"/static/catalog/{filename}"
         existing = session.query(ImageCatalog).filter_by(image_url=url_path).first()
         if existing:
             print(f"Skipping {filename}, already in database.")
             continue
             
-        # Copy to static folder so frontend can serve it
-        shutil.copy2(source_path, dest_path)
-        
+        # 1. Analyze with GPT-4o-mini Vision
         try:
-            # 1. Vision Analysis (using gpt-4o-mini to save cost!)
-            metadata = generate_image_metadata(source_path)
-            
-            # 2. Vector Embedding (using text-embedding-3-small)
-            embedding = generate_embedding(metadata["description"])
-            
-            # 3. Save to DB
-            new_concept = ImageCatalog(
+            print(f"Analyzing {filename} with gpt-4o-mini...")
+            vision_result = generate_image_metadata(file_path)
+        except Exception as e:
+            print(f"Error analyzing {filename}: {e}")
+            continue
+
+        # 2. Generate Vector Embedding
+        combined_text = (
+            f"room_type: {vision_result['room_type']} "
+            f"style: {vision_result['style']} "
+            f"description: {vision_result['description']}"
+        )
+        try:
+            vector_embedding = generate_embedding(combined_text)
+        except Exception as e:
+            print(f"Error generating embedding for {filename}: {e}")
+            continue
+
+        # 3. Save to Database
+        try:
+            new_entry = ImageCatalog(
                 image_url=url_path,
-                description=metadata["description"],
-                room_type=metadata.get("room_type", "unknown").replace(" ", "_").lower(),
-                style=metadata.get("style", "unknown").lower(),
-                embedding=embedding
+                description=vision_result["description"],
+                room_type=vision_result.get("room_type", "unknown").replace(" ", "_").lower(),
+                style=vision_result.get("style", "unknown").lower(),
+                embedding=vector_embedding
             )
             
-            session.add(new_concept)
+            session.add(new_entry)
             session.commit()
             print(f"Successfully added {filename} to RAG catalog.")
             images_processed += 1

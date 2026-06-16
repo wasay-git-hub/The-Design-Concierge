@@ -80,9 +80,16 @@ def analyze_room_photo_with_gpt4o(image_path: str, expected_room_type: str = "ro
 def node_welcome(state: Dict[str, Any]) -> Dict[str, Any]:
     """Phase 1: Welcome & Initial Greetings"""
     chat_history = state.get("chat_history", [])
+    vision = state.get("vision", "").strip()
     
     welcome_msg = (
         "Welcome to The Design Concierge. I am your Digital Junior Designer. "
+    )
+    
+    if vision:
+        welcome_msg += f"I have already noted your initial vision: '{vision}'. "
+        
+    welcome_msg += (
         "Before we begin crafting your space's design dna, I would love to examine the room. "
         "Please upload a photo of the current state of your room and tell me its general layout!"
     )
@@ -90,8 +97,14 @@ def node_welcome(state: Dict[str, Any]) -> Dict[str, Any]:
     if not chat_history:
         chat_history.append({"role": "assistant", "content": welcome_msg})
         
+    # Inject vision directly into style answers for RAG later
+    style_answers = state.get("style_answers", {})
+    if vision:
+        style_answers["client_explicit_vision"] = vision
+        
     return {
         "chat_history": chat_history,
+        "style_answers": style_answers,
         "next_node": "vision_analysis",
         "current_question": "Please upload a photo of your room to proceed.",
         "is_complete": False

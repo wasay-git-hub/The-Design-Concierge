@@ -8,8 +8,8 @@ from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+import tempfile
 
-from src.backend.config import UPLOAD_DIR
 from src.backend.database import get_db, init_db, Lead, Feedback
 from src.backend.workflow import compiled_graph
 from src.backend.pdf_generator import generate_intelligence_report
@@ -38,10 +38,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve uploaded photos and generated PDF reports static files
+# Serve generated PDF reports static files
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 static_dir = os.path.join(root_dir, "static")
-os.makedirs(os.path.join(static_dir, "reports"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.post("/api/onboard")
@@ -51,6 +50,7 @@ def onboard_client(
     phone: str = Form(...),
     location: str = Form(...),
     room_type: str = Form(...),
+    vision: str = Form(""),
     db: Session = Depends(get_db)
 ):
     """
@@ -66,6 +66,7 @@ def onboard_client(
         phone=phone,
         location=location,
         room_type=room_type,
+        vision=vision,
         status="Onboarding"
     )
     db.add(new_lead)
@@ -78,6 +79,7 @@ def onboard_client(
         "phone": phone,
         "location": location,
         "room_type": room_type,
+        "vision": vision,
         "chat_history": [],
         "next_node": "welcome",
         "is_complete": False
@@ -110,12 +112,12 @@ def upload_room_photo(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead session not found.")
         
-    # 2. Save photo file to static folder
+    # 2. Save photo file to temporary folder
     if not file.filename:
         raise HTTPException(status_code=400, detail="Uploaded file has no filename.")
     file_ext = os.path.splitext(file.filename)[1]
     safe_filename = f"{lead_id}_room{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, safe_filename)
+    file_path = os.path.join(tempfile.gettempdir(), safe_filename)
     
     with open(file_path, "wb") as buffer:
         content = file.file.read()
@@ -217,7 +219,7 @@ def generate_report(
     
     # Execute ReportLab PDF layout generator
     print(f"Generating PDF Intelligence Report for: {lead.name}...")
-    pdf_path = generate_intelligence_report(lead_dict, output_dir=os.path.join(static_dir, "reports"))
+    pdf_path = generate_intelligence_report(lead_dict, output_dir=static_dir)
     
     # Store path to PDF in the database
     lead.pdf_path = pdf_path
@@ -226,7 +228,7 @@ def generate_report(
     
     return {
         "success": True,
-        "pdf_url": f"/static/reports/report_{lead_id}.pdf",
+        "pdf_url": f"/static/report_{lead_id}.pdf",
         "lead": lead.to_dict()
     }
 

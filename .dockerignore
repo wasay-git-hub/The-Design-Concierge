@@ -6,11 +6,7 @@ node_modules/
 .next/
 __pycache__/
 *.pyc
-data/
-static/uploads/
-static/reports/
-src/backend/curated_catalog/
-src/backend/static/catalog/
+static/catalog/
 .pytest_cache/
 tests/__pycache__/
 

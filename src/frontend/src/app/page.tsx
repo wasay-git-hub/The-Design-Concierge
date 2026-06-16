@@ -36,6 +36,7 @@ export default function Home() {
     phone: "",
     location: "Austin",
     room_type: "Living Room",
+    vision: "",
   });
 
   // Step 2 Upload state
@@ -218,7 +219,7 @@ export default function Home() {
     setLeadId("");
     setErrorMsg("");
     setLoading(false);
-    setForm({ name: "", email: "", phone: "", location: "Austin", room_type: "Living Room" });
+    setForm({ name: "", email: "", phone: "", location: "Austin", room_type: "Living Room", vision: "" });
   };
 
   return (
@@ -338,6 +339,16 @@ export default function Home() {
                         <option value="Bathroom">Bathroom</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-luxury-charcoal/80 mb-1 block">Your Vision (Optional)</label>
+                    <textarea 
+                      className="w-full px-4 py-2 border border-luxury-border rounded text-sm focus:outline-none focus:border-luxury-brass min-h-[80px]" 
+                      placeholder="Describe your dream space, any specific colors, or vibes you want to avoid..."
+                      value={form.vision}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setForm({...form, vision: e.target.value})}
+                    />
                   </div>
 
                   <button 
