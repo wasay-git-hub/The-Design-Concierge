@@ -280,8 +280,8 @@ def node_dynamic_visuals(state: Dict[str, Any]) -> Dict[str, Any]:
                 matched = df[df['style'] == mapped_style]
                 
             if not matched.empty:
-                # Pick up to 3 random images
-                sample_size = min(3, len(matched))
+                # Pick up to 5 random images
+                sample_size = min(5, len(matched))
                 sampled = matched.sample(n=sample_size)
                 
                 for i, (_, row) in enumerate(sampled.iterrows()):
@@ -304,10 +304,12 @@ def node_dynamic_visuals(state: Dict[str, Any]) -> Dict[str, Any]:
         visual_options = [
             {"id": "generated_option_1", "label": "Concept 1", "url": "/static/styles/organic_modern.png"},
             {"id": "generated_option_2", "label": "Concept 2", "url": "/static/styles/scandinavian_minimalist.png"},
-            {"id": "generated_option_3", "label": "Concept 3", "url": "/static/styles/industrial_chic.png"}
+            {"id": "generated_option_3", "label": "Concept 3", "url": "/static/styles/industrial_chic.png"},
+            {"id": "generated_option_4", "label": "Concept 4", "url": "/static/styles/bohemian_eclectic.png"},
+            {"id": "generated_option_5", "label": "Concept 5", "url": "/static/styles/midcentury_modern.png"}
         ]
     
-    response_msg = f"Based on your preferences, I determined your overarching style leans towards **{mapped_style.title()}**. I have pulled 3 matching design concepts from our catalog for your {room_type.replace('_', ' ')}. Please select the one that resonates most with your vision:"
+    response_msg = f"Based on your preferences, I determined your overarching style leans towards **{mapped_style.title()}**. I have pulled {len(visual_options)} matching design concepts from our catalog for your {room_type.replace('_', ' ')}. Please select the one that resonates most with your vision:"
     
     chat_history.append({
         "role": "assistant", 

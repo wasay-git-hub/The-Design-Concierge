@@ -489,14 +489,14 @@ export default function Home() {
                       <p className="leading-relaxed whitespace-pre-line text-xs">{msg.content}</p>
                       
                       {msg.visual_options && msg.visual_options.length > 0 && (
-                        <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                           {msg.visual_options.map((opt: { id: string; label: string; url: string }) => (
                             <div 
                               key={opt.id}
                               onClick={() => submitChatMessage(`I select the ${opt.label} style.`)}
                               className="group cursor-pointer rounded overflow-hidden border-2 border-transparent hover:border-luxury-brass transition relative"
                             >
-                              <img src={`${API_BASE}${opt.url}`} alt={opt.label} className="w-full h-24 object-cover" />
+                              <img src={`${API_BASE}${opt.url}`} alt={opt.label} className="w-full h-40 object-cover" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent group-hover:from-black/50 transition flex items-end p-2">
                                 <span className="text-white text-[10px] font-bold uppercase tracking-wider drop-shadow-md">{opt.label}</span>
                               </div>
