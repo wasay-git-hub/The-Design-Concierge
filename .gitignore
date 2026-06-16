@@ -37,3 +37,9 @@ static/bedroom/
 static/kitchen/
 static/living_room/
 static/metadata.csv
+
+# RAG Image Catalogs
+src/backend/curated_catalog/*
+!src/backend/curated_catalog/.gitkeep
+src/backend/static/catalog/*
+!src/backend/static/catalog/.gitkeep

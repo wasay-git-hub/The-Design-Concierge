@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 from src.backend.config import UPLOAD_DIR
 from src.backend.database import get_db, init_db, Lead, Feedback
-from src.backend.graphs.workflow import compiled_graph
-from src.backend.utils.pdf_generator import generate_intelligence_report
+from src.backend.workflow import compiled_graph
+from src.backend.pdf_generator import generate_intelligence_report
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

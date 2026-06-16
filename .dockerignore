@@ -9,6 +9,8 @@ __pycache__/
 data/
 static/uploads/
 static/reports/
+src/backend/curated_catalog/
+src/backend/static/catalog/
 .pytest_cache/
 tests/__pycache__/
 

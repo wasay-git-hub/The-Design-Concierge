@@ -4,7 +4,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
 import os
 from src.backend.config import DATABASE_URL
-from src.backend.graphs.nodes import (
+from src.backend.nodes import (
     node_welcome,
     node_vision_analysis,
     node_style_questionnaire,

@@ -1,8 +1,9 @@
 import json
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, String, Integer, Float, DateTime, Text
+from sqlalchemy import create_engine, String, Integer, Float, DateTime, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Mapped, mapped_column
+from pgvector.sqlalchemy import Vector
 from src.backend.config import DATABASE_URL
 
 # Create database engine and session
@@ -93,6 +94,16 @@ class Feedback(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
+class ImageCatalog(Base):
+    __tablename__ = "image_catalog"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    image_url: Mapped[str] = mapped_column(String, unique=True, index=True)
+    description: Mapped[str] = mapped_column(Text)
+    room_type: Mapped[str] = mapped_column(String, index=True)
+    style: Mapped[str] = mapped_column(String, index=True)
+    embedding = mapped_column(Vector(1536))
+
 # Database dependency helper
 def get_db():
     db = SessionLocal()
@@ -102,5 +113,9 @@ def get_db():
         db.close()
 
 def init_db():
+    if not DATABASE_URL.startswith("sqlite"):
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.commit()
     Base.metadata.create_all(bind=engine)
     print("Database tables initialized successfully.")

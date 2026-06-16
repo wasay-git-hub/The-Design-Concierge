@@ -231,75 +231,59 @@ Otherwise, extract their preference and return ONLY a JSON object: {{"{current_q
         }
 
 def node_dynamic_visuals(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Phase 3: Retrieve matching images based on style answers from the Kaggle dataset"""
+    """Phase 3: Retrieve matching images based on style answers from the pgvector database (RAG)"""
     chat_history = state.get("chat_history", [])
     style_answers = state.get("style_answers", {})
     room_type = state.get("room_type", "living_room").lower().replace(" ", "_")
     
-    # Fallback default
-    mapped_style = "modern"
-    
     client = get_openai_client()
-    if client and style_answers:
-        try:
-            prompt = (
-                f"The user provided these style preferences: {json.dumps(style_answers)}\n"
-                f"Which of the following 5 design styles is the closest match?\n"
-                f"[boho, industrial, minimalist, modern, scandinavian]\n"
-                f"Return ONLY a JSON object: {{\"style\": \"<style>\"}}"
-            )
-            res = client.chat.completions.create(
-                model="gpt-5.4-mini",
-                response_format={"type": "json_object"},
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1
-            )
-            extracted = json.loads(res.choices[0].message.content or "{}")
-            if extracted.get("style") in ["boho", "industrial", "minimalist", "modern", "scandinavian"]:
-                mapped_style = extracted["style"]
-        except Exception:
-            pass
-
-    # Read the dataset metadata
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    metadata_path = os.path.join(root_dir, "static", "metadata.csv")
-    
     visual_options = []
     
-    if os.path.exists(metadata_path):
-        try:
-            df = pd.read_csv(metadata_path)
-            # Normalize dataset columns just in case
-            df.columns = df.columns.str.strip().str.lower()
+    # 1. Convert client's preferences into a dense search string
+    search_query = " ".join([f"{k}: {v}" for k, v in style_answers.items()])
+    if not search_query:
+        search_query = f"beautiful {room_type} design"
+        
+    try:
+        if client:
+            # 2. Generate vector embedding for the search string
+            response = client.embeddings.create(
+                model="text-embedding-3-small",
+                input=search_query
+            )
+            query_embedding = response.data[0].embedding
             
-            # Filter by room type and mapped style
-            matched = df[(df['room_type'] == room_type) & (df['style'] == mapped_style)]
-            
-            # If no perfect match for room type, fallback to just style matching
-            if matched.empty:
-                matched = df[df['style'] == mapped_style]
-                
-            if not matched.empty:
-                # Pick up to 5 random images
-                sample_size = min(5, len(matched))
-                sampled = matched.sample(n=sample_size)
-                
-                for i, (_, row) in enumerate(sampled.iterrows()):
-                    img_path = row['image_path']
-                    if 'raw\\' in img_path:
-                        img_path = img_path.split('raw\\')[-1]
-                    elif 'raw/' in img_path:
-                        img_path = img_path.split('raw/')[-1]
-                    img_path = img_path.replace('\\', '/')
+            # 3. Query PostgreSQL / pgvector for the top 5 closest image matches
+            from src.backend.database import SessionLocal, ImageCatalog
+            db = SessionLocal()
+            try:
+                # We filter by room type first (if possible), then sort by vector distance
+                # Cosine distance: <-> 
+                matches = db.query(ImageCatalog)\
+                            .filter(ImageCatalog.room_type == room_type)\
+                            .order_by(ImageCatalog.embedding.cosine_distance(query_embedding))\
+                            .limit(5).all()
+                            
+                # If we didn't find enough matches for that specific room, drop the room filter
+                if len(matches) < 5:
+                    more_matches = db.query(ImageCatalog)\
+                                     .filter(ImageCatalog.room_type != room_type)\
+                                     .order_by(ImageCatalog.embedding.cosine_distance(query_embedding))\
+                                     .limit(5 - len(matches)).all()
+                    matches.extend(more_matches)
+                    
+                for i, match in enumerate(matches):
                     visual_options.append({
                         "id": f"option_{i+1}",
                         "label": f"Concept {i+1}",
-                        "url": f"/static/{img_path}"
+                        "url": match.image_url
                     })
-        except Exception as e:
-            print(f"Dataset reading error: {e}")
-            
-    # Fallback if dataset reading failed or didn't find anything
+            finally:
+                db.close()
+    except Exception as e:
+        print(f"RAG Vector Search Error: {e}")
+        
+    # Fallback if catalog is empty or error occurred
     if not visual_options:
         visual_options = [
             {"id": "generated_option_1", "label": "Concept 1", "url": "/static/styles/organic_modern.png"},
@@ -309,7 +293,7 @@ def node_dynamic_visuals(state: Dict[str, Any]) -> Dict[str, Any]:
             {"id": "generated_option_5", "label": "Concept 5", "url": "/static/styles/midcentury_modern.png"}
         ]
     
-    response_msg = f"Based on your preferences, I determined your overarching style leans towards **{mapped_style.title()}**. I have pulled {len(visual_options)} matching design concepts from our catalog for your {room_type.replace('_', ' ')}. Please select the one that resonates most with your vision:"
+    response_msg = f"Based on your extremely specific preferences, I have vector-searched our curated catalog. I pulled the top {len(visual_options)} design concepts that mathematically match your exact vibe for your {room_type.replace('_', ' ')}. Please select the one that resonates most with your vision:"
     
     chat_history.append({
         "role": "assistant", 
