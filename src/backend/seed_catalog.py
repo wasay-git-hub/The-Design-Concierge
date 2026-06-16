@@ -3,7 +3,7 @@ import shutil
 import base64
 import json
 from dotenv import load_dotenv
-from openai import OpenAI
+from langfuse.openai import OpenAI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.backend.database import ImageCatalog, Base
