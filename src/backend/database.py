@@ -4,14 +4,21 @@ from sqlalchemy import create_engine, String, Integer, Float, DateTime, Text, te
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
+import os
+import sys
 from src.backend.config import DATABASE_URL
+
+db_url = DATABASE_URL
+is_test = "pytest" in sys.modules
+if is_test or not db_url:
+    db_url = "sqlite:///:memory:"
 
 # Create database engine and session
 # SQLite requires check_same_thread=False, but PostgreSQL will crash if you pass it!
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+if db_url.startswith("sqlite"):
+    engine = create_engine(db_url, connect_args={"check_same_thread": False})
 else:
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300)
+    engine = create_engine(db_url, pool_pre_ping=True, pool_recycle=300)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
