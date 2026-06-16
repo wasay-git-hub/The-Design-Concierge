@@ -1,5 +1,5 @@
 import os
-from src.backend.graphs.workflow import compiled_graph
+from src.backend.workflow import compiled_graph
 
 def test_graph_real():
     print("Invoking graph with real image...")

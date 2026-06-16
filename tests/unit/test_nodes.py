@@ -1,5 +1,5 @@
 import pytest
-from src.backend.graphs.nodes import node_welcome
+from src.backend.nodes import node_welcome
 
 def test_node_welcome():
     """

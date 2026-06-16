@@ -1,5 +1,5 @@
 import pytest
-from src.backend.graphs.workflow import route_conversation
+from src.backend.workflow import route_conversation
 
 def test_route_conversation_incomplete():
     """

@@ -1,5 +1,5 @@
 import concurrent.futures
-from src.backend.graphs.nodes import analyze_room_photo_with_gpt4o
+from src.backend.nodes import analyze_room_photo_with_gpt4o
 
 def test_in_thread():
     print("Testing in thread...")
