@@ -21,7 +21,8 @@ services:
       - "3000:3000"
     volumes:
       - ./src/frontend:/app
-    command: npm run dev
+      - /app/node_modules # Prevent Windows node_modules from conflicting
+    command: sh -c "npm ci && npm run dev"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - INTERNAL_API_URL=http://backend:8000

@@ -147,7 +147,12 @@ else:
     from psycopg_pool import ConnectionPool
     
     # Connect to PostgreSQL Checkpointer
-    pool = ConnectionPool(conninfo=DATABASE_URL)
+    pool = ConnectionPool(
+        conninfo=DATABASE_URL,
+        check=ConnectionPool.check_connection, # Tests connection before yielding it
+        max_lifetime=60,
+        kwargs={"autocommit": True}
+    )
     pool.open()
     memory = PostgresSaver(pool)  # type: ignore
     memory.setup()

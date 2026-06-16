@@ -32,8 +32,8 @@ async def verify_backend_api_key(api_key_header: str = Security(api_key_header))
 # Configure CORS for Next.js frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify next.js dev port e.g. ["http://localhost:3000"]
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
