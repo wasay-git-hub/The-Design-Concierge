@@ -219,7 +219,8 @@ def generate_report(
     
     # Execute ReportLab PDF layout generator
     print(f"Generating PDF Intelligence Report for: {lead.name}...")
-    pdf_path = generate_intelligence_report(lead_dict, output_dir=static_dir)
+    reports_dir = os.path.join(static_dir, "reports")
+    pdf_path = generate_intelligence_report(lead_dict, output_dir=reports_dir)
     
     # Store path to PDF in the database
     lead.pdf_path = pdf_path
@@ -228,7 +229,7 @@ def generate_report(
     
     return {
         "success": True,
-        "pdf_url": f"/static/report_{lead_id}.pdf",
+        "pdf_url": f"/static/reports/report_{lead_id}.pdf",
         "lead": lead.to_dict()
     }
 
